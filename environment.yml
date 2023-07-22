@@ -1,0 +1,39 @@
+name: bpnn
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python>=3.6
+  - pip
+  # BASICS
+  - numpy
+  - scipy
+  - pandas
+  - tqdm
+  - psutil
+  - pillow
+  - xlrd
+  - openpyxl
+  # VISUALIZATION
+  - matplotlib
+  - seaborn
+  # ML, STATS & DEEP LEARNING
+  - pytorch
+  - torchvision
+  - scikit-learn
+
+  - pip:
+     - -e .  # install git checkout of pbnn in editable mode
+
+  # DEVELOPMENT ONLY PACKAGES (could also be kept in a separate environment file)
+  - jupyterlab
+  - pytest
+  - pytest-cov
+  - tox
+  - pre_commit
+  - nbdime
+  - nbstripout
+  - sphinx
+  - recommonmark

@@ -1,0 +1,7 @@
+include src/curvature/lenet5_mnist.pth
+include models/kmnist_lenet.pt
+include models/resnet50_imagenet_KFAC.pt
+include models/resnet50_imagenet_KFOC.pt
+include scripts/*
+include tools/*
+include src/*
