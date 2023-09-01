@@ -24,11 +24,13 @@ a similar complexity as K-FAC.
 
 ### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
 
-Bayesian Progressive Neural Networks (BPNN) are a probabilistic architecture that combines Laplace approximation[^2]
-with Progressive Neural Networks (PNN)[^3]. In a first step, a prior distribution is learned from a different dataset and
-is used as a prior for the main columns. The lateral connections each use the posterior of the outgoing layer as a 
-prior. This architecture leads to a model that can use previously learned features and priors to improve the performance
-on the later tasks.
+We learn prior distributions for Bayesian neural networks using Laplace approximation[^2]. Furthermore, we use a novel
+approximation of PAC-Bayes bounds for Laplace approximation to optimize the hyperparameters of the posterior. Finally,
+we extend this idea to continual learning with Bayesian Progressive Neural Networks (BPNN). This is a probabilistic 
+architecture that combines Laplace approximation[^2] with Progressive Neural Networks (PNN)[^3]. In a first step, a 
+prior distribution is learned from a different dataset and is used as a prior for the main columns. The lateral 
+connections each use the posterior of the outgoing layer as a prior. This architecture leads to a model that can use 
+previously learned features and priors to improve the performance on the later tasks.
 
 Altogether, this implementation also includes a general version of PNN that can use arbitrary 
 network architectures and an implementation of PNN that includes MC Dropout[^4].
