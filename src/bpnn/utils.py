@@ -37,10 +37,11 @@ def set_seed(local_seed=None):
     print(f'random seed: {seed}')
 
 
-def accuracy(input: Tensor,
-             target: Tensor,
-             reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-             classification: bool = True) -> Tensor:
+def accuracy(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the accuracy.
 
     This method computes the argmax over the dimension 1 of the
@@ -51,6 +52,8 @@ def accuracy(input: Tensor,
         input: (shape [B, C]) The class input
         target: (shape [B]) The target values
         reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task (else outputs
+            a zero tensor)
 
     Returns:
         A tensor containing the reduced accuracy value
@@ -91,10 +94,11 @@ def nll_reg(input: Tensor, target: Tensor) -> Tensor:
     return 0.5 * (log(2 * pi) + se)
 
 
-def negative_log_likelihood(input: Tensor,
-                            target: Tensor,
-                            reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-                            classification: bool = True) -> Tensor:
+def negative_log_likelihood(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the negative log-likelihood.
 
     Args:
@@ -114,15 +118,18 @@ def negative_log_likelihood(input: Tensor,
     return reduction_fn(nll(input, target))
 
 
-def squared_error(input: Tensor,
-                  target: Tensor,
-                  reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-                  classification: bool = True) -> Tensor:
+def squared_error(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the squared error.
 
     Args:
         input: (shape [B, C]) The input
         target: (shape [B, C]) The target values
+        reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task
 
     Returns:
         A tensor containing the squared error
@@ -134,15 +141,18 @@ def squared_error(input: Tensor,
     return reduction_fn(torch.mean((input - target) ** 2, dim=-1))
 
 
-def absolute_error(input: Tensor,
-                   target: Tensor,
-                   reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-                   classification: bool = True) -> Tensor:
+def absolute_error(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the absolute error.
 
     Args:
         input: (shape [B, C]) The input
         target: (shape [B, C]) The target values
+        reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task
 
     Returns:
         A tensor containing the absolute error
@@ -154,16 +164,18 @@ def absolute_error(input: Tensor,
     return reduction_fn(torch.mean(torch.abs(input - target), dim=-1))
 
 
-def brier_score(input: Tensor,
-                target: Tensor,
-                reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-                classification: bool = True) -> Tensor:
+def brier_score(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the Brier score.
 
     Args:
         input: (shape [B, C]) The class probabilities
         target: (shape [B]) The target values
         reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task
 
     Returns:
         A tensor containing the reduced brier score value
@@ -176,15 +188,18 @@ def brier_score(input: Tensor,
     return reduction_fn(torch.sum((input - one_hot_labels) ** 2, dim=1))
 
 
-def entropy(input: Tensor,
-            target: Tensor,
-            reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-            classification: bool = None) -> Tensor:
+def entropy(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = None) -> Tensor:
     """Computes the entropy.
 
     Args:
-        input: The class probabilities (shape [B, C])
+        input: (shape [B, C]) The class probabilities
+        target: The target values (not used)
         reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task
 
     Returns:
         The reduced entropy value
@@ -202,15 +217,18 @@ def entropy(input: Tensor,
     return reduction_fn(entropy_values, dim=-1)
 
 
-def standard_deviation(input: Tensor,
-                       target: Tensor,
-                       reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
-                       classification: bool = True) -> Tensor:
+def standard_deviation(
+        input: Tensor,
+        target: Tensor,
+        reduction_fn: Optional[Callable[[Tensor], Tensor]] = None,
+        classification: bool = True) -> Tensor:
     """Computes the standard deviation.
 
     Args:
         input: (shape [B, N, C]) The input
-        target: The target values
+        target: The target values (not used)
+        reduction_fn: A reduction function that can be applied to shape [B]
+        classification: Whether the task is a classification task
 
     Returns:
         A tensor containing the standard deviation
@@ -264,17 +282,17 @@ class FunctionalMetric(Metric):
         over the correct and incorrect samples, respectively.
     """
 
-    def __init__(self,
-                 function: Callable[[Tensor,
-                                     Tensor,
-                                     Callable[[Tensor], Tensor],
-                                     bool],
-                                    Tensor],
-                 len_data: int,
-                 dim: int = -1,
-                 reduction: Optional[str] = 'mean',
-                 is_classification: bool = True,
-                 assert_mean: bool = True):
+    def __init__(
+            self,
+            function: Callable[[Tensor,
+                                Tensor,
+                                Callable[[Tensor], Tensor],
+                                bool], Tensor],
+            len_data: int,
+            dim: int = -1,
+            reduction: Optional[str] = 'mean',
+            is_classification: bool = True,
+            assert_mean: bool = True):
         """FunctionalMetric initializer.
 
         Args:
@@ -283,6 +301,10 @@ class FunctionalMetric(Metric):
             len_data: The length of the dataset
             dim: The index of the input that should be used to compute
                 the metric
+            reduction: The reduction to apply to the metric value. Possible
+                reductions: mean, correct vs. incorrect, None
+            is_classification: Whether the task is a classification task
+            assert_mean: Whether the input is already averaged over different runs
         """
         super().__init__()
         self.function = function
@@ -312,9 +334,10 @@ class FunctionalMetric(Metric):
             target: (shape [B]) The target values
         """
         input_dim = input[self.dim]
-        new_value = self.function(input_dim, target,
-                                  reduction_fn=self.reduction_fn,
-                                  classification=self.is_classification)
+        new_value = self.function(
+            input_dim, target,
+            reduction_fn=self.reduction_fn,
+            classification=self.is_classification)
         if self.reduction == 'correct vs. incorrect':
             in_mean = input_dim if input_dim.ndim == 2 else input_dim.mean(dim=1)
             correct_inds: Tensor = torch.argmax(in_mean, dim=-1) == target
@@ -335,8 +358,10 @@ class FunctionalMetric(Metric):
         if self.reduction == 'mean':
             return self.value.item() / self.len_data
         elif self.reduction == 'correct vs. incorrect':
-            return {'correct': np.divide(self.value[0].item(), self.n_correct),
-                    'incorrect': np.divide(self.value[1].item(), self.len_data - self.n_correct)}
+            return {
+                'correct': np.divide(self.value[0].item(), self.n_correct),
+                'incorrect': np.divide(self.value[1].item(), self.len_data - self.n_correct)
+            }
         elif self.reduction is None:
             return self.value
 
@@ -350,17 +375,19 @@ class Calibration(Metric):
 
     assert_mean = True
 
-    def __init__(self,
-                 len_data: int,
-                 dim: int = -1,
-                 is_classification: bool = True,
-                 num_bins: int = 10):
+    def __init__(
+            self,
+            len_data: int,
+            dim: int = -1,
+            is_classification: bool = True,
+            num_bins: int = 10):
         """Calibration initializer.
 
         Args:
             len_data: The length of the dataset
             dim: The index of the probabilities that should be used to compute
                 the metric
+            is_classification: Whether the task is a classification task
             num_bins: The number of bins into which the probabilities are
                 discretized
         """
@@ -395,8 +422,9 @@ class Calibration(Metric):
 
             confidences = input[self.dim].max(dim=1)[0]
             correct = (input[self.dim].argmax(dim=1) == target).float()
-            inds = torch.logical_and(confidences[:, None] > self.lower_bins[None, :],
-                                     confidences[:, None] <= self.upper_bins[None, :]).float()
+            inds = torch.logical_and(
+                confidences[:, None] > self.lower_bins[None, :],
+                confidences[:, None] <= self.upper_bins[None, :]).float()
 
             self.binned_accuracies = self.binned_accuracies.to(device) + correct @ inds
             self.binned_confidences = self.binned_confidences.to(device) + confidences @ inds
@@ -417,7 +445,7 @@ class Calibration(Metric):
             aces = self.binned_confidences - self.binned_accuracies
             ece = (aces.abs() * self.binned_num_samples).nansum() / self.len_data
             return ece.item(), aces.tolist(), \
-                   self.binned_accuracies.tolist(), self.binned_confidences.tolist()
+                self.binned_accuracies.tolist(), self.binned_confidences.tolist()
         else:
             return -1, [], [], []
 
@@ -426,22 +454,26 @@ class ApplyFunctionalMetric(Metric):
     """The metric that applies the FunctionalMetric the each element of the
     input list."""
 
-    def __init__(self,
-                 function: Callable[[Tensor,
-                                     Tensor,
-                                     Callable[[Tensor], Tensor]], Tensor],
-                 len_data: int,
-                 reduction: Optional[str] = 'mean',
-                 is_classification: List[bool] = None,
-                 assert_mean: bool = True):
+    def __init__(
+            self,
+            function: Callable[[Tensor,
+                                Tensor,
+                                Callable[[Tensor], Tensor]], Tensor],
+            len_data: int,
+            reduction: Optional[str] = 'mean',
+            is_classification: List[bool] = None,
+            assert_mean: bool = True):
         """ApplyFunctionalMetric initializer.
 
         Args:
             function: A function that maps the input and target tensor to
                 a single scalar reduced to the sum
             len_data: The length of the dataset
+            reduction: The reduction to apply to the metric value. Possible
+                reductions: mean, correct vs. incorrect, None
             is_classification: A list of boolean values indicating whether the metric is
                 a classification metric or a regression metric
+            assert_mean: Whether the input is already averaged over different runs
         """
         super().__init__()
         self.assert_mean = assert_mean
@@ -474,14 +506,17 @@ class Entropy(ApplyFunctionalMetric):
 
     assert_mean = True
 
-    def __init__(self,
-                 len_data: int,
-                 reduction: Optional[str] = 'mean',
-                 is_classification: List[bool] = None):
+    def __init__(
+            self,
+            len_data: int,
+            reduction: Optional[str] = 'mean',
+            is_classification: List[bool] = None):
         """Entropy initializer.
 
         Args:
             len_data: The length of the dataset
+            reduction: The reduction to apply to the metric value. Possible
+                reductions: mean, correct vs. incorrect, None
             is_classification: A list of boolean values indicating whether the metric is
                 a classification metric or a regression metric
         """
@@ -491,10 +526,11 @@ class Entropy(ApplyFunctionalMetric):
 class StandardDeviation(ApplyFunctionalMetric):
     assert_mean = False
 
-    def __init__(self,
-                 len_data: int,
-                 reduction: Optional[str] = 'mean',
-                 is_classification: List[bool] = None):
+    def __init__(
+            self,
+            len_data: int,
+            reduction: Optional[str] = 'mean',
+            is_classification: List[bool] = None):
         """Standard deviation initializer.
 
         Args:
@@ -516,14 +552,20 @@ class MetricSet:
                    'std histogram', 'std correct vs. incorrect'}
 
     @staticmethod
-    def metric_to_class(metric: str,
-                        len_data: int,
-                        dim: int,
-                        is_classification: List[bool]) -> Metric:
+    def metric_to_class(
+            metric: str,
+            len_data: int,
+            dim: int,
+            is_classification: List[bool]) -> Metric:
         """Converts a metric name to a metric class.
 
         Args:
             metric: The name of the metric
+            len_data: The length of the dataset
+            dim: The index of the probabilities that should be used to compute
+                the metric (except entropy which is computed over the full list)
+            is_classification: A list of booleans indicating whether the metric
+                is a classification metric or a regression metric
 
         Returns:
             The metric class
@@ -554,11 +596,12 @@ class MetricSet:
         elif metric == 'std correct vs. incorrect':
             return StandardDeviation(len_data, 'correct vs. incorrect', is_classification)
 
-    def __init__(self,
-                 len_data: int,
-                 metrics: Union[str, Iterable[str]] = None,
-                 dim: int = -1,
-                 is_classification: List[bool] = None):
+    def __init__(
+            self,
+            len_data: int,
+            metrics: Union[str, Iterable[str]] = None,
+            dim: int = -1,
+            is_classification: List[bool] = None):
         """MetricSet initializer.
 
         Args:
@@ -569,6 +612,8 @@ class MetricSet:
                 'entropy histogram')
             dim: The index of the probabilities that should be used to compute
                 the metric (except entropy which is computed over the full list)
+            is_classification: A list of booleans indicating whether the metric
+                is a classification metric or a regression metric
         """
         if metrics == 'all':
             metrics = self.all_metrics
@@ -598,8 +643,9 @@ class MetricSet:
 
             for logit in logits:
                 if not isinstance(logit, Tensor):
-                    raise TypeError(f'Expected logits to be a list of Tensors, '
-                                    f'got {type(logit)}')
+                    raise TypeError(
+                        f'Expected logits to be a list of Tensors, '
+                        f'got {type(logit)}')
                 if logit.ndim == 2:
                     logit.unsqueeze_(1)
 
@@ -624,16 +670,17 @@ class MetricSet:
                 for metric, metric_class in self.metric_classes.items()}
 
 
-def run_epoch(model: nn.Module,
-              dataloader: DataLoader,
-              criterion: Callable[[Tensor, Tensor], Tensor],
-              is_classification: Union[bool, List[bool]] = True,
-              optimizer: Optional[torch.optim.Optimizer] = None,
-              train: bool = False,
-              metrics: Union[str, List[str]] = None,
-              metrics_dim: int = -1,
-              prefix: str = '',
-              return_if_loss_nan_or_inf: bool = False) \
+def run_epoch(
+        model: nn.Module,
+        dataloader: DataLoader,
+        criterion: Callable[[Tensor, Tensor], Tensor],
+        is_classification: Union[bool, List[bool]] = True,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        train: bool = False,
+        metrics: Union[str, List[str]] = None,
+        metrics_dim: int = -1,
+        prefix: str = '',
+        return_if_loss_nan_or_inf: bool = False) \
         -> Dict[str, Union[float, np.array]]:
     """Runs one epoch over the dataloader.
 
@@ -643,6 +690,9 @@ def run_epoch(model: nn.Module,
         model: A PyTorch model
         dataloader: A PyTorch dataloader
         criterion: A function mapping the logits and targets to the loss
+        is_classification: A list of booleans indicating whether the metric
+            is a classification metric or a regression metric (or a single
+            boolean if all metrics are of the same type)
         optimizer: A PyTorch optimizer
         train: Whether the model is trained or evaluated
         metrics: Either 'all' or a list of metrics strings
@@ -652,7 +702,7 @@ def run_epoch(model: nn.Module,
         metrics_dim: The index of the logits that should be used to compute the
             loss
         prefix: The description of the tqdm bar
-        return_if_loss_nan: Whether to return if the loss is NaN
+        return_if_loss_nan_or_inf: Whether to return if the loss is NaN or Inf
 
     Returns:
         The metrics over the epoch
@@ -665,8 +715,9 @@ def run_epoch(model: nn.Module,
     if not isinstance(is_classification, list):
         is_classification = [is_classification]
 
-    metrics_obj = MetricSet(len(dataloader.dataset), metrics, metrics_dim,
-                            is_classification)
+    metrics_obj = MetricSet(
+        len(dataloader.dataset), metrics, metrics_dim,
+        is_classification)
 
     mean_loss = torch.as_tensor(0., device=device)
 
@@ -682,8 +733,9 @@ def run_epoch(model: nn.Module,
 
             for logit in logits:
                 if not isinstance(logit, Tensor):
-                    raise TypeError(f'Expected logits to be a list of Tensors, '
-                                    f'got {type(logit)}')
+                    raise TypeError(
+                        f'Expected logits to be a list of Tensors, '
+                        f'got {type(logit)}')
                 if logit.ndim == 2:
                     logit.unsqueeze_(1)
 
@@ -737,7 +789,8 @@ def get_verbose_string(d):
     return verbose_string
 
 
-def fit(model: nn.Module,
+def fit(
+        model: nn.Module,
         dataloader: Tuple[DataLoader, Optional[DataLoader], DataLoader],
         criterion: Callable[[Tensor, Tensor], Tensor],
         weight_decay: float,
@@ -763,6 +816,9 @@ def fit(model: nn.Module,
         dataloader:  A tuple of train-, val-, and test-dataloaders
         criterion: A function mapping the logits and targets to the loss
         weight_decay: The weight decay used in the optimizer
+        is_classification: A list of booleans indicating whether the metric
+            is a classification metric or a regression metric (or a single
+            boolean if all metrics are of the same type)
         learning_rate: The learning rate used in the Adam optimizer
         use_validation_set: Whether the training or validation set should be
             used for early stopping
@@ -807,18 +863,20 @@ def fit(model: nn.Module,
     for epoch in range(num_epochs):
         string_length = str(len(str(num_epochs - 1)))
         prefix = ('Epoch {epoch:' + string_length + 'd}: ').format(epoch=epoch + 1)
-        train_metrics = run_epoch(model, dataloader_train, criterion, optimizer=optimizer,
-                                  train=True, metrics=metrics_run_epoch, prefix=prefix + 'Train',
-                                  is_classification=is_classification)
+        train_metrics = run_epoch(
+            model, dataloader_train, criterion, optimizer=optimizer,
+            train=True, metrics=metrics_run_epoch, prefix=prefix + 'Train',
+            is_classification=is_classification)
         metrics['train'].append(train_metrics)
 
         verbose_string = prefix
         verbose_string += f'Train: {get_verbose_string(train_metrics)} | '
 
         if dataloader_val is not None and use_validation_set:
-            val_metrics = run_epoch(model, dataloader_val, criterion,
-                                    train=False, metrics=metrics_run_epoch, prefix=prefix + 'Val',
-                                    is_classification=is_classification)
+            val_metrics = run_epoch(
+                model, dataloader_val, criterion,
+                train=False, metrics=metrics_run_epoch, prefix=prefix + 'Val',
+                is_classification=is_classification)
             metrics['val'].append(val_metrics)
             current_value = val_metrics[metric_for_best_model]
             lr_scheduler_metric = val_metrics['loss']
@@ -833,9 +891,10 @@ def fit(model: nn.Module,
             else:
                 lr_scheduler.step()
 
-        test_metrics = run_epoch(model, dataloader_test, criterion,
-                                 train=False, metrics=metrics_run_epoch, prefix=prefix + 'Test',
-                                 is_classification=is_classification)
+        test_metrics = run_epoch(
+            model, dataloader_test, criterion,
+            train=False, metrics=metrics_run_epoch, prefix=prefix + 'Test',
+            is_classification=is_classification)
         metrics['test'].append(test_metrics)
 
         verbose_string += f'Test: {get_verbose_string(test_metrics)}'
@@ -855,18 +914,19 @@ def fit(model: nn.Module,
     return metrics
 
 
-def compute_curvature(model: nn.Module,
-                      curvs: List[Curvature],
-                      dataloader: DataLoader,
-                      return_data_log_likelihood: bool = True,
-                      num_samples: int = 1,
-                      invert: bool = False,
-                      make_positive_definite: bool = False,
-                      device: torch.device = device,
-                      seed: int = seed,
-                      categorical: bool = True,
-                      save_path: str = None,
-                      save_every_n_steps: int = 100):
+def compute_curvature(
+        model: nn.Module,
+        curvs: List[Curvature],
+        dataloader: DataLoader,
+        return_data_log_likelihood: bool = True,
+        num_samples: int = 1,
+        invert: bool = False,
+        make_positive_definite: bool = False,
+        device: torch.device = device,
+        seed: int = seed,
+        categorical: bool = True,
+        save_path: str = None,
+        save_every_n_steps: int = 100):
     """Computes the curvatures.
 
     Changes the curvatures and can return the negative log-likelihood.
@@ -942,13 +1002,14 @@ def compute_curvature(model: nn.Module,
         return log_likelihood
 
 
-def optimize(params: List[Tensor],
-             flexible_params: List[Tensor],
-             objective: Callable[[List[Tensor]], Tensor],
-             max_iter: int = 500,
-             eps: float = 1e-6,
-             patiance: int = 10,
-             retain_graph: bool = False):
+def optimize(
+        params: List[Tensor],
+        flexible_params: List[Tensor],
+        objective: Callable[[List[Tensor]], Tensor],
+        max_iter: int = 500,
+        eps: float = 1e-6,
+        patiance: int = 10,
+        retain_graph: bool = False):
     """Minimizes parameters with respect to a differentiable objective.
 
     The Adam optimizer is used in combination with an exponential learning rate
@@ -965,6 +1026,7 @@ def optimize(params: List[Tensor],
         this value
         patiance: The optimization is stopped if no improvement is made for
         ``patiance`` steps
+        retain_graph: Whether the computational graph should be retained
     """
     best_params = [param.clone() for param in params]
     best_value = torch.inf
@@ -1004,10 +1066,11 @@ def optimize(params: List[Tensor],
     return best_params
 
 
-def mc_allester_bound(expected_empirical_risk: Union[Tensor, float],
-                      kl_divergence: Union[Tensor, float],
-                      len_data: int,
-                      confidence: float = .8):
+def mc_allester_bound(
+        expected_empirical_risk: Union[Tensor, float],
+        kl_divergence: Union[Tensor, float],
+        len_data: int,
+        confidence: float = .8):
     r"""Computes the McAllester bound.
 
     .. math::
@@ -1028,13 +1091,14 @@ def mc_allester_bound(expected_empirical_risk: Union[Tensor, float],
     return expected_empirical_risk + torch.sqrt(reg)
 
 
-def catoni_bound(expected_empirical_risk: Union[Tensor, float],
-                 kl_divergence: Union[Tensor, float],
-                 len_data: int,
-                 log_catoni_scale: Optional[Union[Tensor, float]] = None,
-                 confidence: float = .8,
-                 return_log_catoni_scale: bool = False,
-                 max_iter: int = 100_000):
+def catoni_bound(
+        expected_empirical_risk: Union[Tensor, float],
+        kl_divergence: Union[Tensor, float],
+        len_data: int,
+        log_catoni_scale: Optional[Union[Tensor, float]] = None,
+        confidence: float = .8,
+        return_log_catoni_scale: bool = False,
+        max_iter: int = 100_000):
     r"""Computes the Catoni bound.
 
     .. math::
@@ -1061,9 +1125,11 @@ def catoni_bound(expected_empirical_risk: Union[Tensor, float],
     """
     if log_catoni_scale is None:
         log_catoni_scale = torch.zeros([], device=device)
-        objective = lambda x: catoni_bound(expected_empirical_risk=expected_empirical_risk, kl_divergence=kl_divergence,
-                                           len_data=len_data, log_catoni_scale=x, confidence=confidence)
-        log_catoni_scale = optimize([log_catoni_scale], [log_catoni_scale], objective, max_iter=max_iter, retain_graph=True)[0]
+        objective = lambda x: catoni_bound(
+            expected_empirical_risk=expected_empirical_risk, kl_divergence=kl_divergence,
+            len_data=len_data, log_catoni_scale=x, confidence=confidence)
+        log_catoni_scale = \
+            optimize([log_catoni_scale], [log_catoni_scale], objective, max_iter=max_iter, retain_graph=True)[0]
 
     reg = (kl_divergence - log(1 - confidence)) / len_data
     bound = (1. - torch.exp(- log_catoni_scale.exp() * expected_empirical_risk - reg)) / (

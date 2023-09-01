@@ -68,10 +68,9 @@ def test_sum_kronecker_products():
     assert (left_opt.grad < 1e-2).all()
     assert (right_opt.grad < 1e-2).all()
 
-
     left_opt2, right_opt2 = power_method_sum_kronecker_products_full_rank(left_tensor, right_tensor,
-                                                                        max_iter=1000, min_diff=1e-7,
-                                                                        assert_positive_definite=False)
+                                                                          max_iter=1000, min_diff=1e-7,
+                                                                          assert_positive_definite=False)
     rdiff2 = relative_difference(ground_truth, torch.kron(left_opt2, right_opt2))
 
     assert rdiff < rdiff2 + eps * 2

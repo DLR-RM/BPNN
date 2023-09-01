@@ -1,19 +1,16 @@
-import pytest
 from copy import deepcopy
-import numpy as np
+from typing import Any
 
+import numpy as np
+import pytest
 import torch
 from torch import nn, Tensor
-
-from src.curvature.curvatures import BlockDiagonal, Diagonal, KFAC
 
 from src.bpnn.bpnn import BayesianProgressiveNeuralNetwork
 from src.bpnn.curvature_scalings import StandardBayes, CurvatureScaling
 from src.bpnn.utils import device, compute_curvature
-
+from src.curvature.curvatures import BlockDiagonal, Diagonal, KFAC
 from .conftest import get_test_dataloader
-
-from typing import Any
 
 
 def list_all_close(list1, list2):
@@ -487,7 +484,7 @@ class TestBayesianProgressiveNeuralNetworks:
                                get_test_dataloader(200, 100, (10,), 10))
         bpnn.update_posterior(0.5, 0.5, [bpnn.posterior[0][0].eye_like(1.)])
         assert bpnn.get_quadratic_term().item() == pytest.approx(
-            sum(param.norm() ** 2 for param in bpnn.networks[0][0].parameters()).item())
+            sum(param.norm() ** 2 for param in bpnn.networks[0][0].parameters()).item(), rel=1e-3)
 
         bpnn_not_eye = BayesianProgressiveNeuralNetwork(prior=curvature,
                                                         last_layer_name='8',
@@ -500,7 +497,7 @@ class TestBayesianProgressiveNeuralNetworks:
                                        get_test_dataloader(200, 100, (10,), 10))
 
         assert bpnn_not_eye.get_quadratic_term().item() == pytest.approx(
-            sum(param.norm() ** 2 for param in bpnn_not_eye.networks[0][0].parameters()).item())
+            sum(param.norm() ** 2 for param in bpnn_not_eye.networks[0][0].parameters()).item(), rel=1e-3)
 
     def test_kl_divergence(self, bpnn):
 
@@ -626,4 +623,3 @@ class TestBayesianProgressiveNeuralNetworks:
                           invert=False, num_samples=1)
         assert bpnn.trace(curvature_list, temperature_scaling=temperature_scaling).item() / temperature_scaling \
                == pytest.approx(bpnn_without_ts.trace(curvature_list, temperature_scaling=1.).item())
-

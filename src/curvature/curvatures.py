@@ -9,11 +9,8 @@ from typing import Union, List, Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-from numpy.linalg import cholesky
 from torch import Tensor
-from torch.distributions.constraints import positive_definite
 from torch.nn import Module, Sequential
-from tqdm import tqdm
 
 from .utils import power_method_sum_kronecker_products_rank_1, check_and_make_pd, \
     sum_kronecker_products, power_method_sum_kronecker_products_full_rank, \
@@ -41,10 +38,11 @@ class Curvature(ABC):
     <https://arxiv.org/abs/1503.05671>`_
     """
 
-    def __init__(self,
-                 model: Union[Module, Sequential],
-                 layer_types: Union[List[str], str] = None,
-                 device: Optional[torch.device] = None):
+    def __init__(
+            self,
+            model: Union[Module, Sequential],
+            layer_types: Union[List[str], str] = None,
+            device: Optional[torch.device] = None):
         """Curvature class initializer.
 
         Args:
@@ -124,9 +122,10 @@ class Curvature(ABC):
         self.record[module][1] = grad * grad.size(0)
 
     @staticmethod
-    def _replace(sample: Tensor,
-                 weight: Tensor,
-                 bias: Tensor = None):
+    def _replace(
+            sample: Tensor,
+            weight: Tensor,
+            bias: Tensor = None):
         """Modifies current model parameters by adding/subtracting quantity given in `sample`.
 
         Args:
@@ -180,9 +179,10 @@ class Curvature(ABC):
         return grads
 
     @abstractmethod
-    def invert(self,
-               add: Union[float, list, tuple] = 0.,
-               multiply: Union[float, list, tuple] = 1.):
+    def invert(
+            self,
+            add: Union[float, list, tuple] = 0.,
+            multiply: Union[float, list, tuple] = 1.):
         """Inverts state.
 
         Abstract method to be implemented by each derived class individually.
@@ -197,8 +197,9 @@ class Curvature(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self,
-               layer: Module) -> Tensor:
+    def sample(
+            self,
+            layer: Module) -> Tensor:
         """Samples from inverted state.
 
         Abstract method to be implemented by each derived class individually.
@@ -243,13 +244,14 @@ class Curvature(ABC):
     def _quadratic_term_weight(self, weight_diff, state) -> Tensor:
         raise NotImplementedError
 
-    def get_quadratic_term(self,
-                           other_model: Module,
-                           other_mean: Optional[Dict] = None,
-                           scalings: List[Union[Dict, float]] = None,
-                           weight_decays: Optional[List[Union[Dict, float]]] = None,
-                           weight_decay_layer_names: Optional[List[str]] = None,
-                           default_weight_decay: Optional[float] = None) -> Tensor:
+    def get_quadratic_term(
+            self,
+            other_model: Module,
+            other_mean: Optional[Dict] = None,
+            scalings: List[Union[Dict, float]] = None,
+            weight_decays: Optional[List[Union[Dict, float]]] = None,
+            weight_decay_layer_names: Optional[List[str]] = None,
+            default_weight_decay: Optional[float] = None) -> Tensor:
         """Computes the quadratic term from a normal prior.
 
          Let :math:`\\theta` be the parameters of other_model and :math:`\\hat{\\theta}` either the model_state of self
@@ -265,7 +267,6 @@ class Curvature(ABC):
             weight_decays: Optional L2-regularization strength (each indexed by the modules of other_model).
             weight_decay_layer_names: Layers that use an isotropic Gaussian prior with default_weight_decay
             default_weight_decay: math:`\\Sigma_l = default_weight_decay`
-            temperature_scaling: temperature scaling :math:`\\tau`
 
         Returns:
             A tensor containing the quadratic term
@@ -325,11 +326,12 @@ class Curvature(ABC):
     def _kl_divergence_state(inv_state1, inv_state2, temperature_scaling: Union[float, Tensor] = 1.) -> Tensor:
         raise NotImplementedError
 
-    def kl_divergence(self,
-                      other: Curvature,
-                      temperature_scaling: Union[float, Dict[Module, float]] = 1.,
-                      weight_decay_layer_names: Optional[List[str]] = None,
-                      default_weight_decay: Optional[float] = None):
+    def kl_divergence(
+            self,
+            other: Curvature,
+            temperature_scaling: Union[float, Dict[Module, float]] = 1.,
+            weight_decay_layer_names: Optional[List[str]] = None,
+            default_weight_decay: Optional[float] = None):
         """ Computes the Kullback-Leibler(KL)-divergence between the normal distributions defined by self and the other
         curvature.
 
@@ -345,9 +347,10 @@ class Curvature(ABC):
         Returns:
             A tensor containing the KL-divergence
         """
-        out = .5 * other.get_quadratic_term(self.model,
-                                            weight_decay_layer_names=weight_decay_layer_names,
-                                            default_weight_decay=default_weight_decay)
+        out = .5 * other.get_quadratic_term(
+            self.model,
+            weight_decay_layer_names=weight_decay_layer_names,
+            default_weight_decay=default_weight_decay)
         name_to_other_module = dict(other.model.named_modules())
         for name, module1 in self.model.named_modules():
             if list(module1.parameters()) and not list(module1.children()):
@@ -361,15 +364,18 @@ class Curvature(ABC):
                     continue
                 temperature = temperature_scaling[module1] if isinstance(temperature_scaling, dict) \
                     else temperature_scaling
-                out += F.relu(self._kl_divergence_state(self.inv_state[module1], other_inv_state,
-                                                        temperature_scaling=temperature)).to(out)
+                out += F.relu(
+                    self._kl_divergence_state(
+                        self.inv_state[module1], other_inv_state,
+                        temperature_scaling=temperature)).to(out)
         return out
 
-    def add_and_scale(self,
-                      other: 'Curvature',
-                      scaling: List[Union[float, Tensor, Dict[Module, Union[float, Tensor]]]],
-                      weight_decay_layer_names: Optional[List[str]] = None,
-                      weight_decay: Optional[float, Tensor] = None):
+    def add_and_scale(
+            self,
+            other: 'Curvature',
+            scaling: List[Union[float, Tensor, Dict[Module, Union[float, Tensor]]]],
+            weight_decay_layer_names: Optional[List[str]] = None,
+            weight_decay: Optional[float, Tensor] = None):
         """Adds the other curvature to self and scales the result by the scaling factors.
 
         The layers in weight_decay_layer_names are treated as isotropic Gaussians
@@ -386,9 +392,10 @@ class Curvature(ABC):
         if weight_decay_layer_names is None:
             weight_decay_layer_names = []
 
-        out = type(self)(self.model,
-                         layer_types=self.layer_types,
-                         device=self.device)
+        out = type(self)(
+            self.model,
+            layer_types=self.layer_types,
+            device=self.device)
         out.model_state = self.model_state
         out.remove_hooks_and_records()
 
@@ -405,14 +412,13 @@ class Curvature(ABC):
 
         return out
 
-
-
     @classmethod
     @abstractmethod
-    def _sum_state(cls,
-                   state_list: List[Any],
-                   scaling: Optional[List[Union[float, Tensor]]],
-                   weight_decay: Optional[Union[float, Tensor]] = None):
+    def _sum_state(
+            cls,
+            state_list: List[Any],
+            scaling: Optional[List[Union[float, Tensor]]],
+            weight_decay: Optional[Union[float, Tensor]] = None):
         """Sums multiple states and optionally adds a multiple of the identity matrix.
 
         Args:
@@ -424,8 +430,9 @@ class Curvature(ABC):
 
     @staticmethod
     @abstractmethod
-    def eigenvalues_of_mm(state_1: Any,
-                          inv_state_2: Any) -> Tensor:
+    def eigenvalues_of_mm(
+            state_1: Any,
+            inv_state_2: Any) -> Tensor:
         """Computes the eigenvalues of the matrix product Fisher matrix by state_1 and the inverse Fisher given by
         inv_state2.
 
@@ -435,18 +442,6 @@ class Curvature(ABC):
         """
         raise NotImplementedError
 
-    # @staticmethod
-    # @abstractmethod
-    # def _trace_of_mm_state(inv_state1, inv_state2):
-    #     """Computes the trace of the matrix product of the Fisher matrix by inv_state1 and the inverse Fisher given by
-    #     inv_state2.
-    #
-    #     Args:
-    #         inv_state1: Inverse first state
-    #         inv_state2: Inverse second state
-    #     """
-    #     raise NotImplementedError
-
     @staticmethod
     @abstractmethod
     def _trace_of_mm_state(state1, inv_state2):
@@ -454,18 +449,20 @@ class Curvature(ABC):
         state2.
 
         Args:
-            state1: Inverse first state
-            state2: Inverse second state
+            state1: First state
+            inv_state2: Inverse second state
         """
         raise NotImplementedError
 
-    def trace_of_mm(self,
-                    other: Curvature,
-                    temperature_scaling: Union[float, Dict[Module, float]] = 1.) -> Tensor:
+    def trace_of_mm(
+            self,
+            other: Curvature,
+            temperature_scaling: Union[float, Dict[Module, float]] = 1.) -> Tensor:
         """Computes the trace of the matrix product of the Fisher matrix of self and the other curvature.
 
         Args:
             other: The second argument of the KL-divergence as a curvature object
+            temperature_scaling: The temperature scaling which scales the covariance matrices of the Gaussians
 
         Returns:
             A tensor containing the trace of the matrix product of the Fisher matrix of self and the other curvature.
@@ -475,12 +472,10 @@ class Curvature(ABC):
         for name, module1 in self.model.named_modules():
             if list(module1.parameters()) and not list(module1.children()):
                 if module1 in self.state.keys():
-                    # other_inv_state = other.inv_state[name_to_other_module[name]]
                     other_inv_state = other.inv_state[name_to_other_module[name]]
                 else:
                     warnings.warn(f'Module {module1} has parameters that are not taken into account.')
                     continue
-                # out += self._trace_of_mm_state(self.inv_state[module1], other_inv_state)
                 temperature = temperature_scaling[module1] if isinstance(temperature_scaling, dict) \
                     else temperature_scaling
                 out += temperature * self._trace_of_mm_state(self.state[module1], other_inv_state)
@@ -518,11 +513,9 @@ class Curvature(ABC):
             if self.inv_state:
                 self.inv_state[module] = self._scale_state(self.inv_state[module], sqrt(scale))
 
-
     @abstractmethod
     def _scale_state(self, state, scale):
         raise NotImplementedError
-
 
     def state_dict(self) -> Dict:
         """Returns a dictionary containing a whole state of the curvature.
@@ -576,8 +569,9 @@ class Diagonal(Curvature):
     for batch sizes larger than 1.
     """
 
-    def update(self,
-               batch_size: int):
+    def update(
+            self,
+            batch_size: int):
         """Computes the diagonal src for selected layer types, skipping all others.
 
         Args:
@@ -594,9 +588,10 @@ class Diagonal(Curvature):
                     else:
                         self.state[layer] = grads
 
-    def invert(self,
-               add: Union[float, list, tuple] = 0.,
-               multiply: Union[float, list, tuple] = 1.):
+    def invert(
+            self,
+            add: Union[float, list, tuple] = 0.,
+            multiply: Union[float, list, tuple] = 1.):
         """Inverts state.
 
         Args:
@@ -626,8 +621,9 @@ class Diagonal(Curvature):
 
             self.inv_state[layer] = inv
 
-    def sample(self,
-               layer: Union[Module, str]):
+    def sample(
+            self,
+            layer: Union[Module, str]):
         """Samples from inverted state.
 
         Args:
@@ -664,9 +660,10 @@ class Diagonal(Curvature):
                      - mm.log().sum())
 
     @classmethod
-    def _sum_state(cls, state_list: List[Tensor],
-                   scaling: Optional[List[Union[float, Tensor]]],
-                   weight_decay: Optional[Union[float, Tensor]] = None):
+    def _sum_state(
+            cls, state_list: List[Tensor],
+            scaling: Optional[List[Union[float, Tensor]]],
+            weight_decay: Optional[Union[float, Tensor]] = None):
         """Sums multiple states and optionally adds a multiple of the identity matrix.
 
         Args:
@@ -686,8 +683,9 @@ class Diagonal(Curvature):
         return torch.stack(state_list, dim=0).sum(dim=0)
 
     @staticmethod
-    def eigenvalues_of_mm(state_1: Tensor,
-                          inv_state_2: Tensor) -> Tensor:
+    def eigenvalues_of_mm(
+            state_1: Tensor,
+            inv_state_2: Tensor) -> Tensor:
         """Computes the eigenvalues of the matrix product Fisher matrix by state_1 and the inverse Fisher given by
         inv_state2.
 
@@ -696,17 +694,6 @@ class Diagonal(Curvature):
             inv_state_2: Inverse second state
         """
         return (state_1 * inv_state_2 ** 2).view(-1)
-
-    # @staticmethod
-    # def _trace_of_mm_state(inv_state1, inv_state2):
-    #     """Computes the trace of the matrix product of the Fisher matrix by inv_state1 and the inverse Fisher given by
-    #     inv_state2.
-    #
-    #     Args:
-    #         inv_state1: Inverse first state
-    #         inv_state2: Inverse second state
-    #     """
-    #     return ((inv_state2 / inv_state1) ** 2).sum()
 
     @staticmethod
     def _trace_of_mm_state(state1, inv_state2):
@@ -723,7 +710,6 @@ class Diagonal(Curvature):
         device, dtype = state.device, state.dtype
         return weight_decay * torch.ones_like(state, device=device, dtype=dtype)
 
-
     def _scale_state(self, state, scale):
         return state * scale
 
@@ -737,8 +723,9 @@ class BlockDiagonal(Curvature):
     Source: `A Scalable Laplace Approximation for Neural Networks <https://openreview.net/pdf?id=Skdvd2xAZ>`_
     """
 
-    def update(self,
-               batch_size: int):
+    def update(
+            self,
+            batch_size: int):
         """Computes the block-diagonal (per-layer) src selected layer types, skipping all others.
 
         Args:
@@ -758,9 +745,10 @@ class BlockDiagonal(Curvature):
                     else:
                         self.state[layer] = grads
 
-    def invert(self,
-               add: Union[float, list, tuple] = 0.,
-               multiply: Union[float, list, tuple] = 1.):
+    def invert(
+            self,
+            add: Union[float, list, tuple] = 0.,
+            multiply: Union[float, list, tuple] = 1.):
         """Inverts state.
 
         Args:
@@ -786,8 +774,9 @@ class BlockDiagonal(Curvature):
             inv_chol = invert_and_cholesky(value_reg)
             self.inv_state[layer] = inv_chol.to(value_reg)
 
-    def sample(self,
-               layer: Module) -> Tensor:
+    def sample(
+            self,
+            layer: Module) -> Tensor:
         """Samples from inverted state.
 
         Args:
@@ -826,9 +815,10 @@ class BlockDiagonal(Curvature):
         return half_term1 + .5 * (term2 - (temperature_scaling.log() + 1) * inv_state1.shape[-1])
 
     @classmethod
-    def _sum_state(cls, state_list: List[Tensor],
-                   scaling: Optional[List[Union[float, Tensor]]],
-                   weight_decay: Optional[Union[float, Tensor]] = None):
+    def _sum_state(
+            cls, state_list: List[Tensor],
+            scaling: Optional[List[Union[float, Tensor]]],
+            weight_decay: Optional[Union[float, Tensor]] = None):
         """Sums multiple states and optionally adds a multiple of the identity matrix.
 
         Args:
@@ -848,8 +838,9 @@ class BlockDiagonal(Curvature):
         return torch.stack(state_list, dim=0).sum(dim=0)
 
     @staticmethod
-    def eigenvalues_of_mm(state_1: Tensor,
-                          inv_state_2: Tensor) -> Tensor:
+    def eigenvalues_of_mm(
+            state_1: Tensor,
+            inv_state_2: Tensor) -> Tensor:
         """Computes the eigenvalues of the matrix product Fisher matrix by state_1 and the inverse Fisher given by
         inv_state2.
 
@@ -863,32 +854,20 @@ class BlockDiagonal(Curvature):
             warnings.warn(f'Matrix is not real diagonalizable, imaginary part is {eigvals.imag}')
         return eigvals.real
 
-    # @staticmethod
-    # def _trace_of_mm_state(inv_state1, inv_state2):
-    #     """Computes the trace of the matrix product of the Fisher matrix by inv_state1 and the inverse Fisher given by
-    #     inv_state2.
-    #
-    #     Args:
-    #         inv_state1: Inverse first state
-    #         inv_state2: Inverse second state
-    #     """
-    #     return torch.trace(torch.cholesky_solve(inv_state2 @ inv_state2.T, inv_state1))
-
     @staticmethod
     def _trace_of_mm_state(state1, inv_state2):
         """Computes the trace of the matrix product of the Fisher matrix by state1 and the inverse Fisher given by
         state2.
 
         Args:
-            state1: Inverse first state
-            state2: Inverse second state
+            state1: First state
+            inv_state2: Inverse second state
         """
         return torch.trace(state1.to(inv_state2) @ inv_state2 @ inv_state2.T)
 
     def _eye_state(self, state, weight_decay):
         device, dtype = state.device, state.dtype
         return weight_decay * torch.eye(*state.shape, device=device, dtype=dtype)
-
 
     def _scale_state(self, state, scale):
         return state * scale
@@ -913,8 +892,9 @@ class KFAC(Curvature):
     <https://arxiv.org/abs/1602.01407>`_
     """
 
-    def update(self,
-               batch_size: int):
+    def update(
+            self,
+            batch_size: int):
         """Computes the 1st and 2nd Kronecker factor `Q` and `H` for each selected layer type, skipping all others.
 
         Args:
@@ -953,9 +933,10 @@ class KFAC(Curvature):
                     else:
                         self.state[layer] = [first_factor, second_factor]
 
-    def invert(self,
-               add: Union[float, list, tuple] = 0.,
-               multiply: Union[float, list, tuple] = 1.):
+    def invert(
+            self,
+            add: Union[float, list, tuple] = 0.,
+            multiply: Union[float, list, tuple] = 1.):
         """Inverts state.
 
         Args:
@@ -965,7 +946,6 @@ class KFAC(Curvature):
         Returns:
             A dict of inverted factors and potentially other quantities required for sampling.
         """
-        # assert self.state, "State dict is empty. Did you call 'update' prior to this?"
         if self.inv_state:
             Warning("State has already been inverted. Is this expected?")
         for index, (layer, value) in enumerate(self.state.items()):
@@ -992,8 +972,9 @@ class KFAC(Curvature):
 
             self.inv_state[layer] = [chol_ifrst, chol_iscnd]
 
-    def sample(self,
-               layer: Module) -> Tensor:
+    def sample(
+            self,
+            layer: Module) -> Tensor:
         """Samples from inverted state.
 
         Args:
@@ -1017,7 +998,6 @@ class KFAC(Curvature):
 
         for key, value in self.state.items():
             self.state[key][0] = value[0]
-            # self.state[key][0] = value[0] / num_batches # for expectation
             self.state[key][1] = value[1] / num_batches
 
             if make_pd:
@@ -1030,6 +1010,7 @@ class KFAC(Curvature):
 
     @staticmethod
     def _kl_divergence_state(inv_state1, inv_state2, temperature_scaling: Union[float, Tensor] = 1.) -> Tensor:
+        # Equation from
         # `Structured and Efficient Variational Deep Learning with Matrix Gaussian Posteriors
         # <https://arxiv.org/pdf/1603.04733.pdf>`_ equation 15
         inv_state1_left, inv_state1_right = inv_state1
@@ -1056,9 +1037,10 @@ class KFAC(Curvature):
         return (half_term1 + .5 * (temperature_scaling * trace - (temperature_scaling.log() + 1) * size)).to(dtype)
 
     @classmethod
-    def _sum_state(cls, state_list: List[Tuple[Tensor, Tensor]],
-                   scaling: Optional[List[Union[float, Tensor]]],
-                   weight_decay: Optional[Union[float, Tensor]] = None):
+    def _sum_state(
+            cls, state_list: List[Tuple[Tensor, Tensor]],
+            scaling: Optional[List[Union[float, Tensor]]],
+            weight_decay: Optional[Union[float, Tensor]] = None):
         """Sums multiple states and optionally adds a multiple of the identity matrix.
 
         Args:
@@ -1086,13 +1068,15 @@ class KFAC(Curvature):
 
         if weight_decay is not None and weight_decay != 0.:
             state_list_left.append(
-                torch.sqrt(torch.as_tensor(weight_decay, dtype=dtype, device=device)) * torch.eye(*shape_left,
-                                                                                                  dtype=dtype,
-                                                                                                  device=device))
+                torch.sqrt(torch.as_tensor(weight_decay, dtype=dtype, device=device)) * torch.eye(
+                    *shape_left,
+                    dtype=dtype,
+                    device=device))
             state_list_right.append(
-                torch.sqrt(torch.as_tensor(weight_decay, dtype=dtype, device=device)) * torch.eye(*shape_right,
-                                                                                                  dtype=dtype,
-                                                                                                  device=device))
+                torch.sqrt(torch.as_tensor(weight_decay, dtype=dtype, device=device)) * torch.eye(
+                    *shape_right,
+                    dtype=dtype,
+                    device=device))
         left_tensor = torch.stack(state_list_left)
         right_tensor = torch.stack(state_list_right)
 
@@ -1102,14 +1086,15 @@ class KFAC(Curvature):
         except RuntimeError:
             error_in_sum = True
         if error_in_sum or out[0].isnan().any() or out[1].isnan().any():
-            out = power_method_sum_kronecker_products_full_rank(left_tensor, right_tensor,
-                                                                assert_positive_definite=False)
-            # out = power_method_sum_kronecker_products_full_rank(left_tensor, right_tensor, assert_positive_definite=True)
+            out = power_method_sum_kronecker_products_full_rank(
+                left_tensor, right_tensor,
+                assert_positive_definite=False)
         return list(out)
 
     @staticmethod
-    def eigenvalues_of_mm(state_1: Union[List[Tensor], Tuple[Tensor]],
-                          inv_state_2: Union[List[Tensor], Tuple[Tensor]]) -> Tensor:
+    def eigenvalues_of_mm(
+            state_1: Union[List[Tensor], Tuple[Tensor]],
+            inv_state_2: Union[List[Tensor], Tuple[Tensor]]) -> Tensor:
         """Computes the eigenvalues of the matrix product Fisher matrix by state_1 and the inverse Fisher given by
         inv_state2.
 
@@ -1146,62 +1131,13 @@ class KFAC(Curvature):
 
         return left_eigvals.outer(right_eigvals).view(-1).contiguous().to(dtype)
 
-    # @staticmethod
-    # def _trace_of_mm_state(inv_state1, inv_state2):
-    #     """Computes the trace of the matrix product of the Fisher matrix by inv_state1 and the inverse Fisher given by
-    #     inv_state2.
-    #
-    #     Args:
-    #         inv_state1: Inverse first state
-    #         inv_state2: Inverse second state
-    #     """
-    #     inv_left1, inv_right1 = inv_state1
-    #     inv_left2, inv_right2 = inv_state2
-    #
-    #     out_left = torch.trace(torch.cholesky_solve(inv_left2 @ inv_left2.T, inv_left1))
-    #     out_right = torch.trace(torch.cholesky_solve(inv_right2 @ inv_right2.T, inv_right1))
-    #     return out_left * out_right
-
-    # @staticmethod
-    # def _trace_of_mm_state(state1, state2):
-    #     """Computes the trace of the matrix product of the Fisher matrix by state1 and the inverse Fisher given by
-    #     state2.
-    #
-    #     Args:
-    #         state1: Inverse first state
-    #         state2: Inverse second state
-    #     """
-    #     left1, right1 = state1
-    #     left2, right2 = state2
-    #
-    #     # if not positive_definite.check(left2):
-    #     #     min_eigval = torch.linalg.eigvalsh(left2).min()
-    #     #     left2 = left2 + \
-    #     #                 torch.eye(left2.shape[0], device=left2.device) * \
-    #     #                 (torch.finfo(torch.float).eps - 2 * min_eigval)
-    #     # reg_left2 = left2 + torch.eye(left2.shape[0], device=left2.device) * torch.finfo(torch.float).eps
-    #     left2 = check_and_make_pd(left2)
-    #     # out_left = torch.trace(left1 @ torch.linalg.pinv(left2))
-    #     out_left = torch.trace(torch.linalg.solve(left2.T, left1.T).T)
-    #
-    #     # reg_right2 = right2 + torch.eye(right2.shape[0], device=right2.device) * torch.finfo(torch.float).eps
-    #     right2 = check_and_make_pd(right2)
-    #     # out_right = torch.trace(right1 @ torch.linalg.pinv(right2))
-    #     # if not positive_definite.check(right2):
-    #     #     min_eigval = torch.linalg.eigvalsh(right2).min()
-    #     #     right2 = right2 + \
-    #     #                 torch.eye(right2.shape[0], device=right2.device) * \
-    #     #                 (torch.finfo(torch.float).eps - 2 * min_eigval)
-    #     out_right = torch.trace(torch.linalg.solve(right2.T, right1.T).T)
-    #     return out_left * out_right
-
     @staticmethod
     def _trace_of_mm_state(state1, inv_state2):
         """Computes the trace of the matrix product of the Fisher matrix by state1 and the inverse Fisher given by
         inv_state2.
 
         Args:
-            state1: Inverse first state
+            state1: First state
             inv_state2: Inverse second state
         """
         left1, right1 = state1
@@ -1215,7 +1151,6 @@ class KFAC(Curvature):
         device, dtype = state[0].device, state[0].dtype
         return [torch.eye(*state[0].shape, device=device, dtype=dtype),
                 weight_decay * torch.eye(*state[1].shape, device=device, dtype=dtype)]
-
 
     def _scale_state(self, state, scale):
         return [sqrt(scale) * state[0], sqrt(scale) * state[1]]
@@ -1234,11 +1169,12 @@ class KFOC(KFAC):
     <http://bayesiandeeplearning.org/2021/papers/33.pdf>`_
     """
 
-    def __init__(self,
-                 model: Union[Module, Sequential],
-                 layer_types: Union[List[str], str] = None,
-                 device: Optional[torch.device] = None,
-                 approx: bool = False):
+    def __init__(
+            self,
+            model: Union[Module, Sequential],
+            layer_types: Union[List[str], str] = None,
+            device: Optional[torch.device] = None,
+            approx: bool = False):
         """K-FOC class initializer.
 
         For the recursive computation of `H`, outputs and inputs for each layer are recorded in `record`. Forward and
@@ -1254,8 +1190,9 @@ class KFOC(KFAC):
         super().__init__(model, layer_types, device)
         self.approx = approx
 
-    def update(self,
-               batch_size: int):
+    def update(
+            self,
+            batch_size: int):
         """Computes the 1st and 2nd Kronecker factor `L` and `R` for each selected layer type, skipping all others.
 
         Args:
@@ -1279,8 +1216,9 @@ class KFOC(KFAC):
                     if module_class == 'Conv2d':
                         first_factor, second_factor = power_method_sum_kronecker_products_rank_1(forward, backward)
                     else:
-                        first_factor, second_factor = power_method_sum_kronecker_products_rank_1(forward[:, None, :],
-                                                                                                 backward[:, None, :])
+                        first_factor, second_factor = power_method_sum_kronecker_products_rank_1(
+                            forward[:, None, :],
+                            backward[:, None, :])
 
                     # Expectation
                     if layer in self.state:
@@ -1292,14 +1230,16 @@ class KFOC(KFAC):
                             right_tensor = torch.stack([self.state[layer][1], second_factor])
                             try:
                                 self.state[layer] = list(
-                                    sum_kronecker_products(left_tensor,
-                                                           right_tensor,
-                                                           assert_positive_definite=False))
+                                    sum_kronecker_products(
+                                        left_tensor,
+                                        right_tensor,
+                                        assert_positive_definite=False))
                             except RuntimeError:
                                 self.state[layer] = list(
-                                    power_method_sum_kronecker_products_full_rank(left_tensor,
-                                                                                  right_tensor,
-                                                                                  assert_positive_definite=False))
+                                    power_method_sum_kronecker_products_full_rank(
+                                        left_tensor,
+                                        right_tensor,
+                                        assert_positive_definite=False))
                     else:
                         self.state[layer] = [first_factor, second_factor]
 

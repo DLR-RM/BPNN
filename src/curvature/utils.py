@@ -1,26 +1,21 @@
 """Provides utility functions except for plotting which are in `plot.py`."""
 
-import argparse
 import logging
-import multiprocessing
 import os
 import random
 from datetime import datetime
 from typing import Tuple, List, Union, Dict, Optional
 
 import numpy as np
-import psutil
 import torch
-from numpy import ndarray as array
-from scipy.stats import entropy
 from torch import Tensor
-from torch.distributions.constraints import positive_definite, Constraint
 from torch.nn import Module
 from tqdm import tqdm
 
 
-def get_eigenvalues(factors: List[Tensor],
-                    verbose: bool = False) -> Tensor:
+def get_eigenvalues(
+        factors: List[Tensor],
+        verbose: bool = False) -> Tensor:
     """Computes the eigenvalues of KFAC, EFB or diagonal factors.
 
     Args:
@@ -61,11 +56,12 @@ def get_eigenvectors(factors: Dict[Module, Tensor]) -> Dict[Module, Tensor]:
     return eigenvectors
 
 
-def power_method_sum_kronecker_products_rank_1(left_tensor: Tensor,
-                                               right_tensor: Tensor,
-                                               max_iter: int = 100,
-                                               min_diff: float = 1e-5,
-                                               dtype: torch.dtype = None) -> Tuple[Tensor, Tensor]:
+def power_method_sum_kronecker_products_rank_1(
+        left_tensor: Tensor,
+        right_tensor: Tensor,
+        max_iter: int = 100,
+        min_diff: float = 1e-5,
+        dtype: torch.dtype = None) -> Tuple[Tensor, Tensor]:
     r"""Approximation of sums of outer-product Kronecker products with the power method.
 
     It approximates
@@ -111,11 +107,12 @@ def power_method_sum_kronecker_products_rank_1(left_tensor: Tensor,
     return L_opt.to(left_tensor.dtype), R_opt.to(right_tensor.dtype)
 
 
-def power_method_sum_kronecker_products_full_rank(left_tensor: Tensor,
-                                                  right_tensor: Tensor,
-                                                  assert_positive_definite: bool = True,
-                                                  max_iter: int = 100,
-                                                  min_diff: float = 1e-6) -> Tuple[Tensor, Tensor]:
+def power_method_sum_kronecker_products_full_rank(
+        left_tensor: Tensor,
+        right_tensor: Tensor,
+        assert_positive_definite: bool = True,
+        max_iter: int = 100,
+        min_diff: float = 1e-6) -> Tuple[Tensor, Tensor]:
     r"""Approximation of sums of general Kronecker products with the power method.
 
     It approximates
@@ -160,9 +157,10 @@ def power_method_sum_kronecker_products_full_rank(left_tensor: Tensor,
     return L_opt, R_opt
 
 
-def sum_kronecker_products(left_tensor: Tensor,
-                           right_tensor: Tensor,
-                           assert_positive_definite: bool = True) -> Tuple[Tensor, Tensor]:
+def sum_kronecker_products(
+        left_tensor: Tensor,
+        right_tensor: Tensor,
+        assert_positive_definite: bool = True) -> Tuple[Tensor, Tensor]:
     r"""Approximation of sums of general Kronecker products with the power method.
 
     It approximates
@@ -204,8 +202,9 @@ def is_positive_definite(x: Tensor) -> bool:
     return info == 0 and L.isfinite().all()
 
 
-def make_positive_definite2(x: Tensor,
-                            eps: Optional[float] = None) -> Tensor:
+def make_positive_definite2(
+        x: Tensor,
+        eps: Optional[float] = None) -> Tensor:
     """Makes the input positive definite."""
     if eps is None:
         eps = torch.finfo(x.dtype).eps
@@ -213,8 +212,9 @@ def make_positive_definite2(x: Tensor,
     return x_new
 
 
-def make_positive_definite(x: Tensor,
-                           eps: Optional[float] = None) -> Tensor:
+def make_positive_definite(
+        x: Tensor,
+        eps: Optional[float] = None) -> Tensor:
     """Makes the input positive definite."""
     if eps is None:
         eps = torch.finfo(x.dtype).eps
@@ -227,8 +227,9 @@ def make_positive_definite(x: Tensor,
         return make_positive_definite2(x, eps)
 
 
-def check_and_make_pd(x: Tensor,
-                      eps: Optional[float] = None) -> Tensor:
+def check_and_make_pd(
+        x: Tensor,
+        eps: Optional[float] = None) -> Tensor:
     """Increases eps until the tensor is positive definite."""
     if eps is None:
         eps = torch.finfo(x.dtype).eps
@@ -241,8 +242,9 @@ def check_and_make_pd(x: Tensor,
     return out
 
 
-def make_invertible_and_invert(x: Tensor,
-                               eps: Optional[float] = None) -> Tensor:
+def make_invertible_and_invert(
+        x: Tensor,
+        eps: Optional[float] = None) -> Tensor:
     """Increases eps until the tensor is invertible."""
     if eps is None:
         eps = torch.finfo(x.dtype).eps

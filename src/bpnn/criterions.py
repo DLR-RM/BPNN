@@ -18,13 +18,15 @@ class Criterion(nn.Module, ABC):
     All criterions have a corresponding model, a cross-entropy loss and the length of the data.
     """
 
-    def __init__(self, model: nn.Module,
-                 loss_function: nn.Module = nn.CrossEntropyLoss(),
-                 **kwargs):
+    def __init__(
+            self, model: nn.Module,
+            loss_function: nn.Module = nn.CrossEntropyLoss(),
+            **kwargs):
         """Criterion initializer.
 
         Args:
             model: A PyTorch model
+            loss_function: A PyTorch loss function
         """
         super().__init__()
         assert hasattr(model, 'get_quadratic_term'), 'model should implement a function get_quadratic_term'
@@ -40,16 +42,18 @@ class Criterion(nn.Module, ABC):
 class ScaledMaximumAPosterioriCriterion(Criterion):
     """Maximum a posteriori objective, where the prior term is scaled."""
 
-    def __init__(self,
-                 model: nn.Module,
-                 scale: float,
-                 loss_function: nn.Module = nn.CrossEntropyLoss(),
-                 **kwargs):
+    def __init__(
+            self,
+            model: nn.Module,
+            scale: float,
+            loss_function: nn.Module = nn.CrossEntropyLoss(),
+            **kwargs):
         """ScaledMaximumAPosterioriCriterion initializer.
 
         Args:
             model: A PyTorch model
             scale: The scaling of the prior term
+            loss_function: A PyTorch loss function
         """
         super().__init__(model, loss_function, **kwargs)
         self.scale = scale
@@ -66,14 +70,16 @@ class MaximumAPosterioriCriterion(ScaledMaximumAPosterioriCriterion):
     Is equivalent to ScaledMaximumAPosterioriCriterion with scale = 1.
     """
 
-    def __init__(self,
-                 model: nn.Module,
-                 loss_function: nn.Module = nn.CrossEntropyLoss(),
-                 **kwargs):
+    def __init__(
+            self,
+            model: nn.Module,
+            loss_function: nn.Module = nn.CrossEntropyLoss(),
+            **kwargs):
         """MaximumAPosterioriCriterion initializer.
 
         Args:
             model: A PyTorch model
+            loss_function: A PyTorch loss function
         """
         super().__init__(model, scale=1., loss_function=loss_function, **kwargs)
 
@@ -85,10 +91,11 @@ class PACBayesCriterion(Criterion, ABC):
     is used and all other terms are assumed to be zero.
     """
 
-    def __init__(self,
-                 model: 'BayesianProgressiveNeuralNetwork',
-                 confidence: float = .95,
-                 **kwargs):
+    def __init__(
+            self,
+            model: 'BayesianProgressiveNeuralNetwork',
+            confidence: float = .95,
+            **kwargs):
         """PACBayesCriterion initializer.
 
         Args:
@@ -114,12 +121,13 @@ class McAllesterCriterion(PACBayesCriterion):
 class CatoniCriterion(PACBayesCriterion):
     """Uses the Catoni bound."""
 
-    def __init__(self,
-                 model: nn.Module,
-                 confidence: float = .95,
-                 update_catoni_scale_every_n_inputs: Optional[int] = None,
-                 verbose_updates: bool = False,
-                 **kwargs):
+    def __init__(
+            self,
+            model: nn.Module,
+            confidence: float = .95,
+            update_catoni_scale_every_n_inputs: Optional[int] = None,
+            verbose_updates: bool = False,
+            **kwargs):
         """MaximumAPosterioriCriterion initializer.
 
         Args:
@@ -148,8 +156,9 @@ class CatoniCriterion(PACBayesCriterion):
             update_catoni_scale_every_n_inputs = self.update_catoni_scale_every_n_inputs \
                 if self.update_catoni_scale_every_n_inputs is not None else self.len_data.item()
             if self.counter >= update_catoni_scale_every_n_inputs:
-                _, self.log_catoni_scale = catoni_bound(nll, quadratic_term, self.len_data, None, self.confidence,
-                                                        return_log_catoni_scale=True, max_iter=1_000)
+                _, self.log_catoni_scale = catoni_bound(
+                    nll, quadratic_term, self.len_data, None, self.confidence,
+                    return_log_catoni_scale=True, max_iter=1_000)
                 if self.verbose_updates:
                     print(f'catoni_scale updated to {self.log_catoni_scale.exp()}')
                 self.counter = 0

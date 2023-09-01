@@ -20,13 +20,13 @@ class WRGBD(VisionDataset):
         excluded_categories: List of excluded categories. Default no category
         split (string): One of {'train', 'val', 'test'}.
             Accordingly dataset is selected.
-        download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-            downloaded again.
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
         target_transform (callable, optional): A function/transform that takes in the
             target and transforms it.
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
     """
 
     url = "https://rgbd-dataset.cs.washington.edu/dataset/rgbd-dataset/rgbd-dataset.tar"
@@ -51,8 +51,9 @@ class WRGBD(VisionDataset):
             target_transform: Optional[Callable] = None,
             download: bool = False,
     ) -> None:
-        super().__init__(root, transform=transform,
-                         target_transform=target_transform)
+        super().__init__(
+            root, transform=transform,
+            target_transform=target_transform)
         self.split = verify_str_arg(split, "split", self.split_list)
 
         self.categories = [category for category in self.all_categories
@@ -63,8 +64,9 @@ class WRGBD(VisionDataset):
             self.download()
 
         if not self._check_exists():
-            raise RuntimeError('Dataset not found.' +
-                               ' You can use download=True to download it')
+            raise RuntimeError(
+                'Dataset not found.' +
+                ' You can use download=True to download it')
 
         instances = [(category, instance)
                      for category in self.categories
@@ -140,8 +142,9 @@ class WRGBD(VisionDataset):
 
         # download files
         filename = self.url.rpartition('/')[2]
-        download_and_extract_archive(self.url, download_root=self.raw_folder,
-                                     extract_root=self.raw_folder, filename=filename, md5=None)
+        download_and_extract_archive(
+            self.url, download_root=self.raw_folder,
+            extract_root=self.raw_folder, filename=filename, md5=None)
 
         print('Done!')
 

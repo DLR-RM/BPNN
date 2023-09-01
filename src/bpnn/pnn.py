@@ -5,20 +5,20 @@ from copy import deepcopy
 from json import dumps
 from math import sqrt, prod
 from typing import List, Dict, Union, Optional, Any, Tuple, Callable, Iterable, \
-    Iterator, Set
+    Set
 
 import torch
 from torch import nn, Tensor
-from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from .utils import fit, base_path, run_epoch, get_dataset_and_name, \
     mc_allester_bound, catoni_bound
 
 
-def nested_module_dict(module_dict: nn.ModuleDict,
-                       name: str,
-                       module: nn.Module) -> nn.ModuleDict:
+def nested_module_dict(
+        module_dict: nn.ModuleDict,
+        name: str,
+        module: nn.Module) -> nn.ModuleDict:
     """Creates a nested ModuleDict.
 
     The name is split by "." and each part of the split defines a new level in
@@ -60,11 +60,12 @@ class LateralConnection(nn.Module):
     This module aggregates and combines the records from the source layers.
     """
 
-    def __init__(self,
-                 source_layer_names: List[str],
-                 forward_record: Dict[nn.Module, Tensor],
-                 lateral_layer_names: List[str],
-                 name_to_module: Callable[[str], nn.Module]):
+    def __init__(
+            self,
+            source_layer_names: List[str],
+            forward_record: Dict[nn.Module, Tensor],
+            lateral_layer_names: List[str],
+            name_to_module: Callable[[str], nn.Module]):
         """LateralConnection initializer.
 
         Args:
@@ -91,9 +92,10 @@ class LateralConnection(nn.Module):
         return x
 
 
-def replace_module(old_module_name: str,
-                   new_module: nn.Module,
-                   network: nn.Module):
+def replace_module(
+        old_module_name: str,
+        new_module: nn.Module,
+        network: nn.Module):
     """ Replaces old_module with new_module in network.
 
     Args:
@@ -119,11 +121,12 @@ class ProgressiveNeuralNetwork(nn.Module):
     We use forward hooks to implement PNN for arbitrary network structures.
     """
 
-    def __init__(self,
-                 base_network: nn.Module,
-                 backbone: nn.Module = None,
-                 last_layer_name: Optional[str] = None,
-                 lateral_connections: Optional[List[str]] = None):
+    def __init__(
+            self,
+            base_network: nn.Module,
+            backbone: nn.Module = None,
+            last_layer_name: Optional[str] = None,
+            lateral_connections: Optional[List[str]] = None):
         """ProgressiveNeuralNetwork initializer.
 
         Args:
@@ -173,12 +176,13 @@ class ProgressiveNeuralNetwork(nn.Module):
         base_network_name_to_module = dict(self.base_network.named_modules())
         for lateral_connection in self.lateral_connections:
             lateral_module = base_network_name_to_module[lateral_connection]
-            replace_module(lateral_connection,
-                           nn.Sequential(
-                               lateral_module,
-                               LateralConnection([], {}, [], None)
-                           ),
-                           self.base_network)
+            replace_module(
+                lateral_connection,
+                nn.Sequential(
+                    lateral_module,
+                    LateralConnection([], {}, [], None)
+                ),
+                self.base_network)
 
     def full_state_dict(self) -> Dict[str, Any]:
         """Returns a dictionary containing the whole state.
@@ -282,11 +286,12 @@ class ProgressiveNeuralNetwork(nn.Module):
             self.name_to_module = dict(self.networks.named_modules())
         return self.name_to_module[name]
 
-    def add_new_column(self,
-                       is_classification: bool = True,
-                       output_size: Optional[int] = None,
-                       differ_from_previous: bool = False,
-                       resample_base_network: bool = False):
+    def add_new_column(
+            self,
+            is_classification: bool = True,
+            output_size: Optional[int] = None,
+            differ_from_previous: bool = False,
+            resample_base_network: bool = False):
         """Adds a new column.
 
         Args:
@@ -316,8 +321,9 @@ class ProgressiveNeuralNetwork(nn.Module):
             replace_module(self.last_layer_name, new_last_layer, intra_column)
 
         if resample_base_network:
-            intra_column.apply(lambda module: module.reset_parameters()
-            if hasattr(module, 'reset_parameters') else None)
+            intra_column.apply(
+                lambda module: module.reset_parameters()
+                if hasattr(module, 'reset_parameters') else None)
 
         inter_column = [nn.ModuleDict({}) for _ in self.networks]
         for hook in self.lateral_forward_pre_hooks:
@@ -338,13 +344,14 @@ class ProgressiveNeuralNetwork(nn.Module):
                         self._lateral_forward_pre_hook))
 
                 nested_module_dict(inter_column_connections, name, new_module)
-            replace_module(f'{lateral_connection}.1',
-                           LateralConnection(
-                               [f'{i}.{i}.{lateral_connection}.0' for i in range(len(self.networks))],
-                               self.forward_record,
-                               [f'{len(self.networks)}.{i}.{lateral_connection}.0' for i in range(len(self.networks))],
-                               self._name_to_module),
-                           intra_column)
+            replace_module(
+                f'{lateral_connection}.1',
+                LateralConnection(
+                    [f'{i}.{i}.{lateral_connection}.0' for i in range(len(self.networks))],
+                    self.forward_record,
+                    [f'{len(self.networks)}.{i}.{lateral_connection}.0' for i in range(len(self.networks))],
+                    self._name_to_module),
+                intra_column)
 
         new_network = nn.ModuleList([*inter_column, intra_column])
 
@@ -373,15 +380,16 @@ class ProbabilisticProgressiveNeuralNetwork(ProgressiveNeuralNetwork):
     Additionally, it implements Bayesian model averaging in the forward method.
     """
 
-    def __init__(self,
-                 base_network: nn.Module,
-                 backbone: nn.Module = None,
-                 last_layer_name: Optional[str] = None,
-                 lateral_connections: Optional[List[str]] = None,
-                 train_resample_slice: slice = slice(None),
-                 train_num_samples: int = 1,
-                 eval_resample_slice: slice = slice(None),
-                 eval_num_samples: int = 100):
+    def __init__(
+            self,
+            base_network: nn.Module,
+            backbone: nn.Module = None,
+            last_layer_name: Optional[str] = None,
+            lateral_connections: Optional[List[str]] = None,
+            train_resample_slice: slice = slice(None),
+            train_num_samples: int = 1,
+            eval_resample_slice: slice = slice(None),
+            eval_num_samples: int = 100):
         """ProbabilisticProgressiveNeuralNetwork initializer.
 
         Args:
@@ -400,8 +408,9 @@ class ProbabilisticProgressiveNeuralNetwork(ProgressiveNeuralNetwork):
             eval_num_samples: The number of samples used for each forward pass
                 during evaluation
         """
-        super().__init__(base_network, backbone, last_layer_name,
-                         lateral_connections)
+        super().__init__(
+            base_network, backbone, last_layer_name,
+            lateral_connections)
 
         self.train_resample_slice = train_resample_slice
         self.train_num_samples = train_num_samples
@@ -438,12 +447,14 @@ class ProbabilisticProgressiveNeuralNetwork(ProgressiveNeuralNetwork):
         self.eval_num_samples = full_state_dict['eval_num_samples']
 
     @abstractmethod
-    def _sample_and_replace(self,
-                            resample_slice: slice):
+    def _sample_and_replace(
+            self,
+            resample_slice: slice):
         raise NotImplementedError
 
-    def sample_and_replace(self,
-                           resample_slice: Optional[slice] = None):
+    def sample_and_replace(
+            self,
+            resample_slice: Optional[slice] = None):
         """Samples and replaces the weights from all columns in resample_slice.
 
         Args:
@@ -453,16 +464,18 @@ class ProbabilisticProgressiveNeuralNetwork(ProgressiveNeuralNetwork):
             resample_slice = self.train_resample_slice if self.training else self.eval_resample_slice
         self._sample_and_replace(resample_slice)
 
-    def forward_once(self,
-                     x: Tensor,
-                     resample_slice: Optional[slice] = None):
+    def forward_once(
+            self,
+            x: Tensor,
+            resample_slice: Optional[slice] = None):
         self.sample_and_replace(resample_slice=resample_slice)
         return super().forward(x)
 
-    def forward(self,
-                x: Tensor,
-                num_samples: Optional[int] = None,
-                resample_slice: Optional[slice] = None):
+    def forward(
+            self,
+            x: Tensor,
+            num_samples: Optional[int] = None,
+            resample_slice: Optional[slice] = None):
         assert self.networks, \
             'no column is available, please call add_new_column before forward'
         if num_samples is None:
@@ -484,17 +497,18 @@ class DropoutProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
     weights with dropout.
     """
 
-    def __init__(self,
-                 base_network: nn.Module,
-                 backbone: nn.Module = None,
-                 last_layer_name: Optional[str] = None,
-                 lateral_connections: Optional[List[str]] = None,
-                 train_resample_slice: slice = slice(None),
-                 train_num_samples: int = 1,
-                 eval_resample_slice: slice = slice(None),
-                 eval_num_samples: int = 100,
-                 dropout_probability: float = 0.5,
-                 dropout_positions: Optional[List[str]] = None):
+    def __init__(
+            self,
+            base_network: nn.Module,
+            backbone: nn.Module = None,
+            last_layer_name: Optional[str] = None,
+            lateral_connections: Optional[List[str]] = None,
+            train_resample_slice: slice = slice(None),
+            train_num_samples: int = 1,
+            eval_resample_slice: slice = slice(None),
+            eval_num_samples: int = 100,
+            dropout_probability: float = 0.5,
+            dropout_positions: Optional[List[str]] = None):
         """DropoutProgressiveNeuralNetwork initializer.
 
         Args:
@@ -525,15 +539,17 @@ class DropoutProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
             if dropout_position in lateral_connections:
                 lateral_connections[lateral_connections.index(dropout_position)] = f'{dropout_position}.0'
             module = base_network_name_to_module[dropout_position]
-            replace_module(dropout_position,
-                           nn.Sequential(
-                               module,
-                               nn.Dropout(dropout_probability)
-                           ),
-                           base_network)
+            replace_module(
+                dropout_position,
+                nn.Sequential(
+                    module,
+                    nn.Dropout(dropout_probability)
+                ),
+                base_network)
 
-        super().__init__(base_network, backbone, last_layer_name, lateral_connections,
-                         train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples)
+        super().__init__(
+            base_network, backbone, last_layer_name, lateral_connections,
+            train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples)
 
     @staticmethod
     def _activate_dropout(module):
@@ -545,22 +561,24 @@ class DropoutProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         if type(module) == nn.Dropout:
             module.eval()
 
-    def _sample_and_replace(self,
-                            resample_slice: slice):
+    def _sample_and_replace(
+            self,
+            resample_slice: slice):
         self.networks.apply(self._deactivate_dropout)
         for column in self.networks[resample_slice]:
             column.apply(self._activate_dropout)
 
 
-def dataset_step_pnn(model: ProgressiveNeuralNetwork,
-                     dataloader: Tuple[DataLoader, DataLoader, DataLoader],
-                     loss_function: nn.Module,
-                     output_size: int,
-                     weight_decay: float,
-                     learning_rate: float,
-                     num_epochs: int,
-                     patience: int,
-                     **kwargs) -> Dict[str, List[Dict[str, float]]]:
+def dataset_step_pnn(
+        model: ProgressiveNeuralNetwork,
+        dataloader: Tuple[DataLoader, DataLoader, DataLoader],
+        loss_function: nn.Module,
+        output_size: int,
+        weight_decay: float,
+        learning_rate: float,
+        num_epochs: int,
+        patience: int,
+        **kwargs) -> Dict[str, List[Dict[str, float]]]:
     """The dataset step of PNN for fit_pnn.
 
     Args:
@@ -579,24 +597,26 @@ def dataset_step_pnn(model: ProgressiveNeuralNetwork,
     """
     is_classification = type(loss_function) is nn.CrossEntropyLoss
     model.add_new_column(is_classification=is_classification, output_size=output_size)
-    train_metrics = fit(model, dataloader, loss_function,
-                        weight_decay=weight_decay,
-                        is_classification=model.is_classification,
-                        learning_rate=learning_rate,
-                        num_epochs=num_epochs,
-                        patience=patience)
+    train_metrics = fit(
+        model, dataloader, loss_function,
+        weight_decay=weight_decay,
+        is_classification=model.is_classification,
+        learning_rate=learning_rate,
+        num_epochs=num_epochs,
+        patience=patience)
     return train_metrics
 
 
-def dataset_step_ppnn(model: ProbabilisticProgressiveNeuralNetwork,
-                      dataloader: Tuple[DataLoader, DataLoader, DataLoader],
-                      loss_function: nn.Module,
-                      output_size: int,
-                      weight_decay: float,
-                      learning_rate: float,
-                      num_epochs: int,
-                      patience: int,
-                      **kwargs) -> Dict[str, List[Dict[str, float]]]:
+def dataset_step_ppnn(
+        model: ProbabilisticProgressiveNeuralNetwork,
+        dataloader: Tuple[DataLoader, DataLoader, DataLoader],
+        loss_function: nn.Module,
+        output_size: int,
+        weight_decay: float,
+        learning_rate: float,
+        num_epochs: int,
+        patience: int,
+        **kwargs) -> Dict[str, List[Dict[str, float]]]:
     """The dataset step of PPNN for fit_pnn.
 
     Args:
@@ -614,34 +634,35 @@ def dataset_step_ppnn(model: ProbabilisticProgressiveNeuralNetwork,
         The metrics computed during the training
     """
     is_classification = type(loss_function) is nn.CrossEntropyLoss
-    model.add_new_column(is_classification=is_classification,
-                         output_size=output_size)
+    model.add_new_column(
+        is_classification=is_classification,
+        output_size=output_size)
     eval_num_samples = model.eval_num_samples
     model.eval_num_samples = 1
-    train_metrics = fit(model, dataloader, loss_function,
-                        weight_decay=weight_decay,
-                        is_classification=model.is_classification,
-                        learning_rate=learning_rate,
-                        num_epochs=num_epochs,
-                        patience=patience)
+    train_metrics = fit(
+        model, dataloader, loss_function,
+        weight_decay=weight_decay,
+        is_classification=model.is_classification,
+        learning_rate=learning_rate,
+        num_epochs=num_epochs,
+        patience=patience)
     model.eval_num_samples = eval_num_samples
     return train_metrics
 
 
-def fit_pnn(model: ProgressiveNeuralNetwork,
-            dataloaders: List[Tuple[Optional[int],
-                                    Tuple[DataLoader, DataLoader, DataLoader],
-                                    nn.Module]],
-            dataset_step: Callable,
-            weight_decay=1e-5,
-            learning_rate=2e-3,
-            num_epochs: int = 100,
-            patience: int = 10,
-            name: Optional[str] = None,
-            eval_every_task: bool = True,
-            compute_pac_bounds: bool = True,
-            confidence: float = 0.8,
-            **kwargs) -> List[Dict]:
+def fit_pnn(
+        model: ProgressiveNeuralNetwork,
+        dataloaders: List[Tuple[Optional[int], Tuple[DataLoader, DataLoader, DataLoader], nn.Module]],
+        dataset_step: Callable,
+        weight_decay: float = 1e-5,
+        learning_rate: float = 2e-3,
+        num_epochs: int = 100,
+        patience: int = 10,
+        name: Optional[str] = None,
+        eval_every_task: bool = True,
+        compute_pac_bounds: bool = True,
+        confidence: float = 0.8,
+        **kwargs) -> List[Dict]:
     """Runs the full optimization routine for ProgressiveNeuralNetworks.
 
     Args:
@@ -680,9 +701,10 @@ def fit_pnn(model: ProgressiveNeuralNetwork,
         train_dataset, dataset_name = get_dataset_and_name(dataloader[0])
         print(f'Task {task}: {dataset_name}')
 
-        train_metrics = dataset_step(model, dataloader, loss_function, output_size, weight_decay,
-                                     learning_rate, train_dataset=train_dataset,
-                                     num_epochs=num_epochs, patience=patience, **kwargs)
+        train_metrics = dataset_step(
+            model, dataloader, loss_function, output_size, weight_decay,
+            learning_rate, train_dataset=train_dataset,
+            num_epochs=num_epochs, patience=patience, **kwargs)
 
         if name is not None:
             torch.save(model.full_state_dict(), os.path.join(model_path, f'full_state_dict_{task}.pt'))
@@ -691,28 +713,27 @@ def fit_pnn(model: ProgressiveNeuralNetwork,
         first_task = 1 if eval_every_task else task
         is_classification = [type(loss_function) is type(nn.CrossEntropyLoss())
                              for (_, _, loss_function), _ in zip(dataloaders[1:], range(task))]
-        metrics.append({
-            'train': train_metrics,
-            'test': evaluate_pnn(model, dataloaders[first_task:task + 1],
-                                 range(first_task - 1, task),
-                                 compute_pac_bounds=compute_pac_bounds,
-                                 confidence=confidence,
-                                 is_classification=is_classification)
-        })
+        metrics.append(
+            {
+                'train': train_metrics,
+                'test': evaluate_pnn(
+                    model, dataloaders[first_task:task + 1],
+                    range(first_task - 1, task),
+                    compute_pac_bounds=compute_pac_bounds,
+                    confidence=confidence,
+                    is_classification=is_classification)
+            })
     return metrics
 
 
-def evaluate_pnn(model: ProgressiveNeuralNetwork,
-                 dataloaders: List[Tuple[Optional[int],
-                                         Tuple[DataLoader,
-                                               DataLoader,
-                                               DataLoader],
-                                         nn.Module]],
-                 dims: Iterable[int],
-                 metrics: Union[str, List[str]] = 'all',
-                 compute_pac_bounds: bool = True,
-                 confidence: float = 0.8,
-                 is_classification: Union[bool, List[bool]] = True):
+def evaluate_pnn(
+        model: ProgressiveNeuralNetwork,
+        dataloaders: List[Tuple[Optional[int], Tuple[DataLoader, DataLoader, DataLoader], nn.Module]],
+        dims: Iterable[int],
+        metrics: Union[str, List[str]] = 'all',
+        compute_pac_bounds: bool = True,
+        confidence: float = 0.8,
+        is_classification: Union[bool, List[bool]] = True):
     """Evaluates ProgressiveNeuralNetworks.
 
     Args:
@@ -724,6 +745,7 @@ def evaluate_pnn(model: ProgressiveNeuralNetwork,
         compute_pac_bounds: Whether PAC-Bayesian bounds should be computed
             (needs that model has the method kl_divergence)
         confidence: The confidence used for the PAC-Bayesian bounds
+        is_classification: Whether the task is a classification task
 
     Returns:
         A dict containing the evaluation metrics
@@ -732,26 +754,37 @@ def evaluate_pnn(model: ProgressiveNeuralNetwork,
     model.requires_grad_(False)
     test_metrics = []
     for local_dim, (_, local_dataloader, loss_function) in zip(dims, dataloaders):
-        test_metric = run_epoch(model, local_dataloader[-1], loss_function,
-                                metrics=metrics, metrics_dim=local_dim,
-                                is_classification=is_classification)
+        test_metric = run_epoch(
+            model, local_dataloader[-1], loss_function,
+            metrics=metrics, metrics_dim=local_dim,
+            is_classification=is_classification)
         if local_dim == list(dims)[-1] and compute_pac_bounds and is_classification[local_dim]:
-            train_metric = run_epoch(model, local_dataloader[0], loss_function,
-                                     metrics='accuracy', metrics_dim=local_dim,
-                                     is_classification=is_classification)
+            train_metric = run_epoch(
+                model, local_dataloader[0], loss_function,
+                metrics='accuracy', metrics_dim=local_dim,
+                is_classification=is_classification)
             test_metric['train accuracy'] = train_metric['accuracy']
             expected_empirical_risk = 1 - train_metric['accuracy'] / 100
             kl_divergence = model.kl_divergence(penalty_slice=slice(local_dim, local_dim + 1))
             test_metric['KL divergence'] = kl_divergence.item()
             len_data = len(local_dataloader[0].dataset)
-            test_metric['McAllester bound'] = mc_allester_bound(expected_empirical_risk, kl_divergence, len_data, confidence=confidence).item()
-            test_metric['Catoni bound'] = catoni_bound(expected_empirical_risk, kl_divergence, len_data, confidence=confidence).item()
+            test_metric['McAllester bound'] = mc_allester_bound(
+                expected_empirical_risk,
+                kl_divergence,
+                len_data,
+                confidence=confidence).item()
+            test_metric['Catoni bound'] = catoni_bound(
+                expected_empirical_risk,
+                kl_divergence,
+                len_data,
+                confidence=confidence).item()
 
         local_dataset, local_dataset_name = get_dataset_and_name(local_dataloader[-1])
 
         test_metric['dataset'] = local_dataset_name
-        print(f'{local_dataset_name}:\n'
-              f'{dumps(test_metric, sort_keys=True, indent=4, default=str)}')
+        print(
+            f'{local_dataset_name}:\n'
+            f'{dumps(test_metric, sort_keys=True, indent=4, default=str)}')
         test_metrics.append(test_metric)
 
     return test_metrics

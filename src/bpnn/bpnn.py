@@ -1,9 +1,8 @@
-"""Official implementation of `Bayesian Progressive Neural Networks
-<https://elib.dlr.de/146057/1/dominik_tum_thesis.pdf>`_"""
-from copy import deepcopy
-from typing import List, Dict, Union, Optional, Any, Tuple
+"""Official implementation of Bayesian Progressive Neural Networks from
+`Learning Expressive Priors for Generalization and Uncertainty Estimation in
+Neural Networks <https://proceedings.mlr.press/v202/schnaus23a/schnaus23a.pdf>`_
+"""
 
-import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
@@ -11,7 +10,7 @@ from src.curvature.curvatures import *
 from .criterions import Criterion
 from .curvature_scalings import CurvatureScaling
 from .pnn import ProbabilisticProgressiveNeuralNetwork
-from .utils import run_epoch, device, fit, \
+from .utils import device, fit, \
     compute_curvature
 
 
@@ -37,20 +36,21 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
             a curvature scaling to obtain the new posterior (add_new_posterior)
     """
 
-    def __init__(self,
-                 prior: Curvature,
-                 backbone: nn.Module = None,
-                 last_layer_name: Optional[str] = None,
-                 lateral_connections: Optional[List[str]] = None,
-                 train_resample_slice: slice = slice(-1),
-                 train_num_samples: int = 1,
-                 eval_resample_slice: slice = slice(None),
-                 eval_num_samples: int = 100,
-                 weight_decay: float = 1e-5,
-                 weight_decay_layer_names: Optional[List[str]] = None,
-                 curvature_device: Optional[torch.device] = torch.device('cpu'),
-                 curvature_scaling_device: Optional[torch.device] = torch.device('cpu'),
-                 ):
+    def __init__(
+            self,
+            prior: Curvature,
+            backbone: nn.Module = None,
+            last_layer_name: Optional[str] = None,
+            lateral_connections: Optional[List[str]] = None,
+            train_resample_slice: slice = slice(-1),
+            train_num_samples: int = 1,
+            eval_resample_slice: slice = slice(None),
+            eval_num_samples: int = 100,
+            weight_decay: float = 1e-5,
+            weight_decay_layer_names: Optional[List[str]] = None,
+            curvature_device: Optional[torch.device] = torch.device('cpu'),
+            curvature_scaling_device: Optional[torch.device] = torch.device('cpu'),
+            ):
         """BayesianProgressiveNeuralNetwork initializer.
 
         Args:
@@ -68,15 +68,18 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
                 sampled during evaluation
             eval_num_samples: The number of samples used for each forward pass
                 during evaluation
+            weight_decay: The weight decay used for the prior
             weight_decay_layer_names: Layers that use an isotropic Gaussian
                 prior with default_weight_decay (should usually include
                 last_layer_name when the columns have different number of
                 outputs)
             curvature_device: The device for the curvature
+            curvature_scaling_device: The device used for the curvature scaling
         """
-        super().__init__(prior.model, backbone, last_layer_name, lateral_connections,
-                         train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples)
-        prior.model_state = prior.model.state_dict() # updates the names of the state dict
+        super().__init__(
+            prior.model, backbone, last_layer_name, lateral_connections,
+            train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples)
+        prior.model_state = prior.model.state_dict()  # updates the names of the state dict
         self.weight_decay = weight_decay
         self.prior = prior
 
@@ -138,7 +141,7 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
                     [
                         [
                             {name: self.temperature_scaling[module] for name, module in column.named_modules()
-                                if module in self.temperature_scaling.keys()}
+                             if module in self.temperature_scaling.keys()}
                             for column in network
                         ]
                         for network in self.networks
@@ -191,11 +194,12 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
 
             self.networks[-1].requires_grad_(True)
 
-    def add_new_column(self,
-                       is_classification: bool = True,
-                       output_size: Optional[int] = None,
-                       differ_from_previous: bool = False,
-                       resample_base_network: bool = False):
+    def add_new_column(
+            self,
+            is_classification: bool = True,
+            output_size: Optional[int] = None,
+            differ_from_previous: bool = False,
+            resample_base_network: bool = False):
         """Adds a new column.
 
         Args:
@@ -214,12 +218,13 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
                 posterior.model.load_state_dict(posterior.model_state)
         super().add_new_column(is_classification, output_size, differ_from_previous, resample_base_network)
 
-    def update_scaling(self,
-                       alpha: Optional[Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
-                       beta: Optional[Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
-                       temperature_scaling: Optional[
-                           Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
-                       update_slice: Optional[slice] = slice(-1, None)):
+    def update_scaling(
+            self,
+            alpha: Optional[Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
+            beta: Optional[Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
+            temperature_scaling: Optional[
+                Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None,
+            update_slice: Optional[slice] = slice(-1, None)):
         """Updates the scales and temperature scaling.
 
         Args:
@@ -255,10 +260,11 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
                         for module in posterior.state.keys():
                             self.temperature_scaling[module] = temperature_scaling
 
-    def update_posterior(self,
-                         alpha: Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]],
-                         beta: Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]],
-                         curvature_list: List[Curvature]):
+    def update_posterior(
+            self,
+            alpha: Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]],
+            beta: Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]],
+            curvature_list: List[Curvature]):
         """Updates the posterior.
 
         This method sets the posterior curvature to
@@ -273,20 +279,22 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
 
         priors = [posterior[-1] for posterior in self.posterior[:-1]] + [self.prior]
 
-        self.posterior[-1] = [curvature.add_and_scale(prior,
-                                                      [beta, alpha],
-                                                      self.weight_decay_layer_names,
-                                                      self.weight_decay)
+        self.posterior[-1] = [curvature.add_and_scale(
+            prior,
+            [beta, alpha],
+            self.weight_decay_layer_names,
+            self.weight_decay)
                               for curvature, prior in zip(curvature_list, priors)]
 
         for posterior in self.posterior[-1]:
             posterior.invert()
 
-    def add_new_posterior(self,
-                          curvature_scaling: CurvatureScaling,
-                          dataloader: DataLoader,
-                          num_samples: int = 1,
-                          return_curvature: bool = False):
+    def add_new_posterior(
+            self,
+            curvature_scaling: CurvatureScaling,
+            dataloader: DataLoader,
+            num_samples: int = 1,
+            return_curvature: bool = False):
         """Adds a new posterior.
 
         Args:
@@ -301,9 +309,10 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
 
         new_curvature = [type(self.prior)(network, device=self.curvature_device) for network in
                          self.networks[-1]]
-        negative_data_log_likelihood = compute_curvature(self, new_curvature, dataloader,
-                                                         num_samples=num_samples, invert=False,
-                                                         categorical=self.is_classification[-1])
+        negative_data_log_likelihood = compute_curvature(
+            self, new_curvature, dataloader,
+            num_samples=num_samples, invert=False,
+            categorical=self.is_classification[-1])
         for curvature in new_curvature:
             curvature.remove_hooks_and_records()
 
@@ -313,8 +322,9 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
             self.update_posterior(alpha, beta, new_curvature)
             self.update_scaling(alpha, beta, temperature_scaling)
 
-        trace = lambda temperature_scaling: self.trace(new_curvature,
-                                                       temperature_scaling=temperature_scaling)
+        trace = lambda temperature_scaling: self.trace(
+            new_curvature,
+            temperature_scaling=temperature_scaling)
         kl_divergence = lambda temperature_scaling: self.kl_divergence(temperature_scaling=temperature_scaling)
 
         modules = [module for curvature in new_curvature for module in curvature.state.keys()]
@@ -351,8 +361,9 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         # but there might be more columns than posteriors
 
         # implement sampling and replacing by the posterior
-        for _, column in zip(self.networks[resample_slice],
-                             self.posterior):
+        for _, column in zip(
+                self.networks[resample_slice],
+                self.posterior):
             for curv in column:
                 curv.sample_and_replace(temperature_scaling=self.temperature_scaling)
 
@@ -376,12 +387,14 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         out = torch.as_tensor(0., device=device)
         for column in self.networks[penalty_slice]:
             for prior, network in zip(self.posterior, column[:-1]):
-                out += prior[-1].get_quadratic_term(network,
-                                                    weight_decay_layer_names=self.weight_decay_layer_names,
-                                                    default_weight_decay=self.weight_decay)
-            out += self.prior.get_quadratic_term(column[-1],
-                                                 weight_decay_layer_names=self.weight_decay_layer_names,
-                                                 default_weight_decay=self.weight_decay)
+                out += prior[-1].get_quadratic_term(
+                    network,
+                    weight_decay_layer_names=self.weight_decay_layer_names,
+                    default_weight_decay=self.weight_decay)
+            out += self.prior.get_quadratic_term(
+                column[-1],
+                weight_decay_layer_names=self.weight_decay_layer_names,
+                default_weight_decay=self.weight_decay)
         return out
 
     def kl_divergence(self, penalty_slice=slice(-1, None), temperature_scaling=None):
@@ -393,6 +406,7 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         Args:
             penalty_slice: The column indices the KL-divergence should be
                 computed for
+            temperature_scaling: The temperature scaling
 
         Returns:
             A tensor containing the KL-divergence
@@ -407,16 +421,18 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         for column in self.posterior[penalty_slice]:
             for prior, posterior in zip(self.posterior, column[:-1]):
                 out += posterior.kl_divergence(prior[-1], temperature_scaling=temperature_scaling)
-            out += column[-1].kl_divergence(self.prior,
-                                            temperature_scaling=temperature_scaling,
-                                            weight_decay_layer_names=self.weight_decay_layer_names,
-                                            default_weight_decay=self.weight_decay)
+            out += column[-1].kl_divergence(
+                self.prior,
+                temperature_scaling=temperature_scaling,
+                weight_decay_layer_names=self.weight_decay_layer_names,
+                default_weight_decay=self.weight_decay)
         return out
 
-    def trace(self,
-              curvature_list: List[Curvature],
-              temperature_scaling: Optional[
-                  Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None):
+    def trace(
+            self,
+            curvature_list: List[Curvature],
+            temperature_scaling: Optional[
+                Union[float, torch.Tensor, Dict[nn.Module, Union[float, torch.Tensor]]]] = None):
         """Computes the trace of the matrix product of the Fisher matrix in curvature_list
         and the last posterior.
 
@@ -438,18 +454,47 @@ class BayesianProgressiveNeuralNetwork(ProbabilisticProgressiveNeuralNetwork):
         return out
 
 
-def init_prior(base_network: nn.Module,
-               curvature_type: type,
-               dataloader: DataLoader,
-               weight_decay: float,
-               curvature_scaling: CurvatureScaling,
-               isotropic_prior: bool = False,
-               curvature_device: Optional[torch.device] = None,
-               curvature_scaling_device: Optional[torch.device] = None,
-               curvature_path: str = None,
-               negative_data_log_likelihood: float = None,
-               len_data: int = None
-               ):
+def init_prior(
+        base_network: nn.Module,
+        curvature_type: type,
+        dataloader: DataLoader,
+        weight_decay: float,
+        curvature_scaling: CurvatureScaling,
+        isotropic_prior: bool = False,
+        curvature_device: Optional[torch.device] = None,
+        curvature_scaling_device: Optional[torch.device] = None,
+        curvature_path: str = None,
+        negative_data_log_likelihood: float = None,
+        len_data: int = None
+        ) -> Curvature:
+    """Initializes the prior.
+
+    It computes the curvature around the base_network using the dataloader and
+    returns a curvature containing the prior distribution. If curvature_path is
+    provided, the curvature is loaded from the path (also requires the
+    negative_data_log_likelihood and len_data). If isotropic_prior is True, the
+    prior is an isotropic Gaussian with weight_decay as variance.
+
+    If the curvature is computed and not isotropic, we scale it using the
+    curvature_scaling.
+
+    Args:
+        base_network: The base network
+        curvature_type: The class of curvature to be used
+        dataloader: The dataloader to compute the curvature
+        weight_decay: The weight decay used for the prior
+        curvature_scaling: The curvature scaling used to scale the prior
+        isotropic_prior: Whether the prior should be isotropic
+        curvature_device: The device used for the curvature
+        curvature_scaling_device: The device used for the curvature scaling
+        curvature_path: The path to the curvature
+        negative_data_log_likelihood: The negative data log likelihood of the
+            curvature
+        len_data: The number of data points used to compute the curvature
+
+    Returns:
+        The prior
+    """
     if curvature_device is None:
         curvature_device = device
     prior_curvature = curvature_type(base_network, device=curvature_device)
@@ -537,19 +582,20 @@ def init_prior(base_network: nn.Module,
     return prior
 
 
-def dataset_step_bpnn(model: BayesianProgressiveNeuralNetwork,
-                      dataloader: Tuple[DataLoader, DataLoader, DataLoader],
-                      loss_function: nn.Module,
-                      output_size: int,
-                      weight_decay: float,
-                      learning_rate: float,
-                      num_epochs: int,
-                      patience: int,
-                      train_dataset: Dataset,
-                      curvature_scaling: CurvatureScaling,
-                      criterion: Criterion,
-                      curvature_num_samples: int,
-                      **kwargs) -> Dict[str, List[Dict[str, float]]]:
+def dataset_step_bpnn(
+        model: BayesianProgressiveNeuralNetwork,
+        dataloader: Tuple[DataLoader, DataLoader, DataLoader],
+        loss_function: nn.Module,
+        output_size: int,
+        weight_decay: float,
+        learning_rate: float,
+        num_epochs: int,
+        patience: int,
+        train_dataset: Dataset,
+        curvature_scaling: CurvatureScaling,
+        criterion: Criterion,
+        curvature_num_samples: int,
+        **kwargs) -> Dict[str, List[Dict[str, float]]]:
     """The dataset step of BPNN for fit_pnn.
 
     A new column is added and fitted. Moreover, the curvature is computed and
@@ -579,21 +625,24 @@ def dataset_step_bpnn(model: BayesianProgressiveNeuralNetwork,
 
     # add new column
     if len(model.networks) == len(model.posterior):
-        model.add_new_column(is_classification=is_classification,
-                             output_size=output_size)
+        model.add_new_column(
+            is_classification=is_classification,
+            output_size=output_size)
         eval_num_samples = model.eval_num_samples
         model.eval_num_samples = 1
-        train_metrics = fit(model, dataloader, criterion, weight_decay=.0,
-                            is_classification=model.is_classification,
-                            learning_rate=learning_rate,
-                            num_epochs=num_epochs, patience=patience)
+        train_metrics = fit(
+            model, dataloader, criterion, weight_decay=.0,
+            is_classification=model.is_classification,
+            learning_rate=learning_rate,
+            num_epochs=num_epochs, patience=patience)
         model.eval_num_samples = eval_num_samples
     else:
         train_metrics = {}
 
     # add new posterior
-    curvature_scaling.reset(dataloader=dataloader[1],
-                            criterion=criterion,
-                            is_classification=is_classification)
+    curvature_scaling.reset(
+        dataloader=dataloader[1],
+        criterion=criterion,
+        is_classification=is_classification)
     model.add_new_posterior(curvature_scaling, dataloader[0], num_samples=curvature_num_samples)
     return train_metrics

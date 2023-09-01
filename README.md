@@ -3,11 +3,15 @@
 Bayesian Progressive Neural Networks (BPNN) is the official code base for the following works:
 
 **[Kronecker-Factored Optimal Curvature]** \
-Dominik Schnaus, Jongseok Lee, and Rudolph Triebel. _NeurIPS 2021 BDL Workshop_.
+Dominik Schnaus, Jongseok Lee, and Rudolph Triebel. _NeurIPS 2021 BDL Workshop_.\
+[[Paper](http://bayesiandeeplearning.org/2021/papers/33.pdf)] 
+[[Poster](poster_kfoc.pdf)]
 
 **[Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks]** \
-Dominik Schnaus, Jongseok Lee, Daniel Cremers, Rudolph Triebel. ICML 2023.
-
+Dominik Schnaus, Jongseok Lee, Daniel Cremers, Rudolph Triebel. ICML 2023.\
+[[Paper](https://proceedings.mlr.press/v202/schnaus23a/schnaus23a.pdf)] 
+[[Poster](https://icml.cc/media/PosterPDFs/ICML%202023/23901.png?t=1689841529.0378458)] 
+[[Video](https://slideslive.com/39003754)]
 
 ## Description
 ### Kronecker-Factored Optimal Curvature
@@ -18,7 +22,7 @@ For this, we adapted the power method to find the optimal Kronecker factors for 
 a similar complexity as K-FAC.
 
 
-### Bayesian Progressive Neural Networks
+### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
 
 Bayesian Progressive Neural Networks (BPNN) are a probabilistic architecture that combines Laplace approximation[^2]
 with Progressive Neural Networks (PNN)[^3]. In a first step, a prior distribution is learned from a different dataset and
@@ -55,7 +59,61 @@ You can install this project either with conda or the Python Package Installer (
      ```
 
 ## Reproducing the Results
-Will be added soon.
+First, for all experiments, activate the `pbnn` environment:
+```bash
+conda activate bpnn
+```
+### Kronecker-Factored Optimal Curvature
+Download and store the Concrete Compression Strength Dataset and the Energy Efficiency Dataset in `data/raw/` as shown
+in the folder structure below. The datasets can be downloaded from the
+[UCI Machine Learning Repository](https://archive.ics.uci.edu/datasets).
+
+Run the main script of the K-FOC folder:
+```bash
+python scripts/kfoc/main.py
+```
+The approximation quality for each dataset, layer, batch size and random seed is then saved to 
+`results/kfoc/results.json` and the corresponding runtime to `results/kfoc/runtime_dict.json`.
+
+Moreover, these files are automatically evaluated and the figures from the paper are generated in the folder
+`reports/kfoc/`.
+
+### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
+For all experiments, the models are saved in `models/` and the results for each model are saved in `results/`. The 
+figures are saved in `reports/`. Each experiment has its own script in `scripts/bpnn/` and is saved to its own folder.
+#### Ablation Studies
+- Generalization Bounds (Figure 2 (a)): 
+```bash
+python scripts/bpnn/ablations/generalization_bounds.py
+```
+
+- Ablations on the few-shot accuracy (Figure 2 (b) and Figure 7):
+```bash
+python scripts/bpnn/ablations/few_shot_ablations.py
+```
+
+- Cold posterior effect on NotMNIST (Figure 2 (c) and Figure 8 left):
+```bash
+python scripts/bpnn/ablations/cold_posterior_small.py
+```
+
+- Approximation quality on the sum-of-Kronecker-products (Figure 3):
+```bash
+python scripts/bpnn/ablations/sum_of_kronecker_product_approximation.py
+```
+
+- Approximation quality of our proposed PAC-Bayes objective (Figure 6):
+```bash
+python scripts/bpnn/ablations/pac_bayes_objective.py
+```
+
+- Cold posterior effect on CIFAR-10 (Figure 8 right):
+```bash
+python scripts/bpnn/ablations/cold_posterior_large.py
+```
+
+#### Generalization in Bayesian Continual Learning
+The script and the commands to run the experiment are given in `scripts/bpnn/bayesian_continual_learning.py`.
 
 ## Usage
 
@@ -65,11 +123,11 @@ To use the curvatures, please follow the steps of the [official curvature librar
 implementation is forked from. K-FOC can be used the same as K-FAC. Additionally, `src/bpnn/utils.py` 
 includes `compute_curvature` which contains the loop to compute the curvature for a model over a dataset.
 
-### Bayesian Progressive Neural Networks
+### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
 
-To run own BPNN experiments, one can use the functions `sweep_bpnn`, `sweep_pnn`, and `sweep_dpnn` in
-`tools/run_experiment.py` that train multiple configurations of Bayesian Progressive Neural Networks, 
-Progressive Neural Networks, and Progressive Neural Networks with MC Dropout.
+To run own experiments using the learned prior and Bayesian Progressive Neural Networks, one can use the functions 
+`sweep_bpnn`, `sweep_pnn`, and `sweep_dpnn` in `tools/run_experiment.py` that train multiple configurations of Bayesian 
+Progressive Neural Networks, Progressive Neural Networks, and Progressive Neural Networks with MC Dropout.
 
 These functions take the dataloaders, the base network, the names of the layers for lateral connections,
 and the name of the last layer. Moreover, multiple different weight decays, curvature types, etc. can be 
@@ -185,7 +243,7 @@ arXiv preprint arXiv:1506.02158 (2015).
 [official curvature library]: https://github.com/DLR-RM/curvature
 [ImageNet ILSVRC 2012]: http://www.image-net.org/download-images
 [Kronecker-Factored Optimal Curvature]: http://bayesiandeeplearning.org/2021/papers/33.pdf
-[Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks]: https://proceedings.mlr.press/v202/schnaus23a/schnaus23a.pdf
+[Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks]: https://proceedings.mlr.press/v202/schnaus23a
 [conda]: https://docs.conda.io/
 [pre-commit]: https://pre-commit.com/
 [Jupyter]: https://jupyter.org/

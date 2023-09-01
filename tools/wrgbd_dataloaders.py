@@ -11,13 +11,14 @@ from src.bpnn.utils import seed, torch_data_path
 from tools.wrgbd import WRGBD
 
 
-def get_train_val_test_split_dataloaders(dataset_class: type,
-                                         data_path: str,
-                                         splits: List,
-                                         download: bool,
-                                         transform,
-                                         batch_size: int = 1,
-                                         kwargs: Optional[Dict] = None) \
+def get_train_val_test_split_dataloaders(
+        dataset_class: type,
+        data_path: str,
+        splits: List,
+        download: bool,
+        transform,
+        batch_size: int = 1,
+        kwargs: Optional[Dict] = None) \
         -> Tuple[int, Tuple[DataLoader, ...], torch.nn.Module]:
     """Returns the training, validation and test split for a dataset.
 
@@ -40,18 +41,20 @@ def get_train_val_test_split_dataloaders(dataset_class: type,
     datasets = [dataset_class(root=data_path, split=split, download=download, transform=transform, **kwargs) for split
                 in
                 splits]
-    dataloaders = [DataLoader(dataset, pin_memory=torch.cuda.is_available(), num_workers=len(os.sched_getaffinity(0)),
-                              batch_size=batch_size, shuffle=(i == 0), generator=generator)
+    dataloaders = [DataLoader(
+        dataset, pin_memory=torch.cuda.is_available(), num_workers=len(os.sched_getaffinity(0)),
+        batch_size=batch_size, shuffle=(i == 0), generator=generator)
                    for i, dataset in enumerate(datasets)]
     output_size = len(datasets[0].classes)
     return output_size, tuple(dataloaders), torch.nn.CrossEntropyLoss()
 
 
-def get_dataloaders(batch_size: int,
-                    remove_idxs: Optional[Iterable[int]] = None) \
+def get_dataloaders(
+        batch_size: int,
+        remove_idxs: Optional[Iterable[int]] = None) \
         -> List[Tuple[Optional[int],
-                      Tuple[DataLoader, DataLoader, DataLoader],
-                      torch.nn.Module]]:
+        Tuple[DataLoader, DataLoader, DataLoader],
+        torch.nn.Module]]:
     """Returns the dataloader of the large-scale continual learning experiment.
 
     The dataloaders for the indices in remove_idxs are ([], [], []). This can be
@@ -75,13 +78,15 @@ def get_dataloaders(batch_size: int,
                        'download': None,
                        'data_path': os.path.join(torch_data_path, 'ImageNet'),
                        'splits': ['train', 'val', 'val'],
-                       'transform': Compose([
-                           Resize(256),
-                           CenterCrop(224),
-                           ToTensor(),
-                           Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-                       ]),
+                       'transform': Compose(
+                           [
+                               Resize(256),
+                               CenterCrop(224),
+                               ToTensor(),
+                               Normalize(
+                                   mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
+                           ]),
                        'kwargs': {}
                    },
                    {
@@ -92,12 +97,14 @@ def get_dataloaders(batch_size: int,
                        'kwargs': {
                            'excluded_categories': wrgbd_extra_categories
                        },
-                       'transform': Compose([
-                           Resize([224, 224]),
-                           ToTensor(),
-                           Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-                       ]),
+                       'transform': Compose(
+                           [
+                               Resize([224, 224]),
+                               ToTensor(),
+                               Normalize(
+                                   mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
+                           ]),
                    },
                ] + [
                    {
@@ -108,17 +115,20 @@ def get_dataloaders(batch_size: int,
                        'kwargs': {
                            'categories': [category]
                        },
-                       'transform': Compose([
-                           Resize([224, 224]),
-                           ToTensor(),
-                           Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-                       ]),
+                       'transform': Compose(
+                           [
+                               Resize([224, 224]),
+                               ToTensor(),
+                               Normalize(
+                                   mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
+                           ]),
                    } for category in wrgbd_extra_categories
                ]
 
-    dataloaders = [get_train_val_test_split_dataloaders(batch_size=batch_size,
-                                                        **dataset)
+    dataloaders = [get_train_val_test_split_dataloaders(
+        batch_size=batch_size,
+        **dataset)
                    if idx not in remove_idxs else (None, ([], [], []), None)
                    for idx, dataset in enumerate(datasets)]
     return dataloaders

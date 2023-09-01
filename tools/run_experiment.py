@@ -8,16 +8,16 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from src.curvature.curvatures import KFAC, KFOC, Diagonal
+from src.bpnn.bpnn import init_prior, dataset_step_bpnn, \
+    BayesianProgressiveNeuralNetwork
 from src.bpnn.criterions import CatoniCriterion, MaximumAPosterioriCriterion, \
     McAllesterCriterion, ScaledMaximumAPosterioriCriterion
 from src.bpnn.curvature_scalings import CatoniScaling, McAllesterScaling, \
     StandardBayes, CurvatureScaling, ValidationScaling
-from src.bpnn.bpnn import init_prior, dataset_step_bpnn, \
-    BayesianProgressiveNeuralNetwork
 from src.bpnn.pnn import fit_pnn, evaluate_pnn, ProgressiveNeuralNetwork, \
     dataset_step_pnn, DropoutProgressiveNeuralNetwork, dataset_step_ppnn
-from src.bpnn.utils import base_path, seed, device, HalfMSELoss, fit
+from src.bpnn.utils import base_path, seed, device, fit
+from src.curvature.curvatures import KFAC, KFOC, Diagonal
 
 model_to_abbreviation = {
     BayesianProgressiveNeuralNetwork: 'BPNN',
@@ -26,10 +26,11 @@ model_to_abbreviation = {
 }
 
 
-def run_and_save_params_and_output(function: Callable[[Any], Any],
-                                   path: Optional[str],
-                                   *args: Any,
-                                   **kwargs: Any):
+def run_and_save_params_and_output(
+        function: Callable[[Any], Any],
+        path: Optional[str],
+        *args: Any,
+        **kwargs: Any):
     """Runs a function and saves the parameters and outputs to a path.
 
     Args:
@@ -60,9 +61,10 @@ def get_name(name: str = 'unnamed', return_number: bool = False):
 
     Args:
         name: A string
+        return_number: Whether to return the number or the new name
 
     Returns:
-        The new name with a number at the end
+        The new name with a number at the end or the number
     """
     head, tail = os.path.split(name)
     previous = [int(model_name.split('_')[-1])
@@ -76,13 +78,14 @@ def get_name(name: str = 'unnamed', return_number: bool = False):
         return new_name
 
 
-def evaluate_ood(model: ProgressiveNeuralNetwork,
-                 ood_dataloaders: List[Tuple[Optional[int],
-                                             Tuple[DataLoader,
-                                                   DataLoader,
-                                                   DataLoader]]],
-                 ood_dims: Iterable[int],
-                 result_path: str):
+def evaluate_ood(
+        model: ProgressiveNeuralNetwork,
+        ood_dataloaders: List[Tuple[Optional[int],
+        Tuple[DataLoader,
+        DataLoader,
+        DataLoader]]],
+        ood_dims: Iterable[int],
+        result_path: str):
     """Evaluates the model on dataloaders and saves the results in an existing
     file.
 
@@ -101,8 +104,9 @@ def evaluate_ood(model: ProgressiveNeuralNetwork,
             json.dump(d, f, indent=4, default=str)
 
 
-def save_scaling(model: BayesianProgressiveNeuralNetwork,
-                 result_path: str):
+def save_scaling(
+        model: BayesianProgressiveNeuralNetwork,
+        result_path: str):
     """Saves the scaling of the model in an existing file.
 
     Args:
@@ -120,46 +124,45 @@ def save_scaling(model: BayesianProgressiveNeuralNetwork,
         json.dump(d, f, indent=4, default=str)
 
 
-def sweep_bpnn(prefix: str,
-               dataloaders: List[Tuple[Optional[int],
-                                       Tuple[DataLoader, DataLoader, DataLoader],
-                                       nn.Module]],
-               network: nn.Module,
-               backbone: Optional[nn.Module],
-               last_layer_name: str,
-               lateral_connections: List[str],
-               curvature_types: List[str],
-               weight_decays: List[float],
-               criterion_types: List[str],
-               curvature_scalings: List[str],
-               pretrained: bool,
-               curvature_device: Optional[torch.device],
-               curvature_num_samples: int = 1,
-               learning_rate: float = 2e-3,
-               num_epochs: int = 100,
-               patience: int = 10,
-               compute_pac_bounds: bool = True,
-               eval_every_task: bool = True,
-               confidence: float = 0.8,
-               temperature_scalings: Optional[List[float]] = None,
-               evaluate_each_temperature: bool = False,
-               isotropic_prior: bool = False,
-               prior_curvature_scalings: Optional[List[CurvatureScaling]] = None,
-               prior_curvature_path: Optional[str] = None,
-               prior_curvature_type: Optional[str] = None,
-               negative_data_log_likelihood: Optional[float] = None,
-               len_data: Optional[int] = None,
-               ood_dataloaders: Optional[
-                   List[Tuple[Optional[int],
-                              Tuple[DataLoader, DataLoader, DataLoader],
-                              nn.Module]]] = None,
-               ood_dims: Optional[Iterable[int]] = None,
-               alphas_betas: Optional[Tuple[List[float], List[float]]] = None,
-               validation_scaling_num_samples: Optional[int] = None,
-               fixed: Optional[Tuple[float, float, float]] = None,
-               shared: Optional[Tuple[bool, bool, bool]] = None,
-               curvature_scaling_device: Optional[torch.device] = None,
-               checkpoint_dir: str = None):
+def sweep_bpnn(
+        prefix: str,
+        dataloaders: List[Tuple[Optional[int], Tuple[DataLoader, DataLoader, DataLoader], nn.Module]],
+        network: nn.Module,
+        backbone: Optional[nn.Module],
+        last_layer_name: str,
+        lateral_connections: List[str],
+        curvature_types: List[str],
+        weight_decays: List[float],
+        criterion_types: List[str],
+        curvature_scalings: List[str],
+        pretrained: bool,
+        curvature_device: Optional[torch.device],
+        curvature_num_samples: int = 1,
+        learning_rate: float = 2e-3,
+        num_epochs: int = 100,
+        patience: int = 10,
+        compute_pac_bounds: bool = True,
+        eval_every_task: bool = True,
+        confidence: float = 0.8,
+        temperature_scalings: Optional[List[float]] = None,
+        evaluate_each_temperature: bool = False,
+        isotropic_prior: bool = False,
+        prior_curvature_scalings: Optional[List[CurvatureScaling]] = None,
+        prior_curvature_path: Optional[str] = None,
+        prior_curvature_type: Optional[str] = None,
+        negative_data_log_likelihood: Optional[float] = None,
+        len_data: Optional[int] = None,
+        ood_dataloaders: Optional[
+            List[Tuple[Optional[int],
+            Tuple[DataLoader, DataLoader, DataLoader],
+            nn.Module]]] = None,
+        ood_dims: Optional[Iterable[int]] = None,
+        alphas_betas: Optional[Tuple[List[float], List[float]]] = None,
+        validation_scaling_num_samples: Optional[int] = None,
+        fixed: Optional[Tuple[float, float, float]] = None,
+        shared: Optional[Tuple[bool, bool, bool]] = None,
+        curvature_scaling_device: Optional[torch.device] = None,
+        checkpoint_path: str = None):
     """Sweeps multiple configurations of Bayesian Progressive Neural Networks.
 
     All combinations of curvature type, weight decay, temperature scaling, and
@@ -191,15 +194,16 @@ def sweep_bpnn(prefix: str,
         >>> sweep_bpnn(prefix='',
         >>>            dataloaders=dataloaders,
         >>>            network=network,
+        >>>            backbone=backbone,
         >>>            last_layer_name=last_layer_name,
         >>>            lateral_connections=lateral_connections,
         >>>            curvature_types=['KFAC', 'Diagonal'],
         >>>            weight_decays=[1e-8, 1e-6],
-        >>>            temperature_scalings=[1e-7, 1e-8],
         >>>            criterion_types=['MAP', 'MAP', 'Catoni'],
         >>>            curvature_scalings=['Standard', 'McAllester', 'Catoni'],
         >>>            pretrained=True,
         >>>            curvature_device=torch.device('cpu'),
+        >>>            temperature_scalings=[1e-7, 1e-8],
         >>>            )
 
     Args:
@@ -214,8 +218,6 @@ def sweep_bpnn(prefix: str,
         curvature_types: A list of curvature names out of 'KFAC', 'KFOC',
             and 'Diagonal'
         weight_decays: A list of weight decays
-        temperature_scalings: A list of temperature scalings (scaling of the
-            covariance matrices)
         criterion_types: A list of criterion names out of 'MAP', 'McALlester',
             and 'Catoni'
         curvature_scalings: A list of curvature scaling names out of 'Standard',
@@ -227,10 +229,18 @@ def sweep_bpnn(prefix: str,
         num_epochs: The number of epochs
         patience: The number of epochs with no improvement after which training
             will be stopped
+        compute_pac_bounds: Whether to compute the PAC-Bayes bounds
+        eval_every_task: Whether to evaluate the model after each task
         confidence: The confidence used for the PAC Bayes bounds
+        temperature_scalings: A list of temperature scalings (scaling of the
+            covariance matrices)
+        evaluate_each_temperature: Whether to evaluate the model on each
+            temperature scaling
+        isotropic_prior: Whether to use an isotropic prior
         prior_curvature_scalings: The curvature scaling to scale the prior if
             different from the normal curvature scaling
         prior_curvature_path: The path of a previously computed curvature
+        prior_curvature_type: The clas of the prior curvature
         negative_data_log_likelihood: Pre-computed negative log-likelihood
         len_data: Pre-computed length of the dataset
         ood_dataloaders: A tuple of output dimensions and train-, val-, and
@@ -238,10 +248,13 @@ def sweep_bpnn(prefix: str,
         ood_dims: The columns that should be used for each dataloader
         alphas_betas: A tuple of two lists of alphas and betas for the
             ValidationScaling
-        fixed_alpha_beta: A tuple of two floats for fixing alpha and/or beta
-        shared_alpha_beta: A tuple of two booleans indicating whether the alpha
-            and beta should be shared or not
+        validation_scaling_num_samples: The number of samples used to compute
+            the validation scaling
+        fixed: A tuple of three floats for fixing alpha, beta, and temperature
+        shared: A tuple of three booleans indicating whether the alpha, beta,
+            and temperature should be shared or not
         curvature_scaling_device: The device for the curvature scaling
+        checkpoint_path: The path where the models should be loaded
     """
     if prior_curvature_scalings is None:
         prior_curvature_scalings = [None]
@@ -275,9 +288,9 @@ def sweep_bpnn(prefix: str,
     if shared is None:
         shared = (False, False, False)
 
-    if checkpoint_dir:
+    if checkpoint_path:
         pretrained = True
-        isotropic_prior = True # increase speed to compute prior
+        isotropic_prior = True  # increase speed to compute prior
 
     for curvature_type_name in curvature_types:
         assert curvature_type_name in name_to_curvature_type.keys()
@@ -315,7 +328,8 @@ def sweep_bpnn(prefix: str,
                     if not pretrained:
                         loss_function = dataloaders[0][2]
                         base_network.requires_grad_(True)
-                        fit(base_network, dataloaders[0][1], loss_function, weight_decay,
+                        fit(
+                            base_network, dataloaders[0][1], loss_function, weight_decay,
                             is_classification=type(loss_function) is nn.CrossEntropyLoss,
                             learning_rate=learning_rate, num_epochs=num_epochs, patience=patience)
 
@@ -326,14 +340,16 @@ def sweep_bpnn(prefix: str,
 
                     prior_criterion = dataloaders[0][2]
 
-                    prior_curvature_scaling.reset(dataloader=dataloaders[0][1][1],
-                                                  criterion=prior_criterion,
-                                                  is_classification=type(prior_criterion) == nn.CrossEntropyLoss)
+                    prior_curvature_scaling.reset(
+                        dataloader=dataloaders[0][1][1],
+                        criterion=prior_criterion,
+                        is_classification=type(prior_criterion) == nn.CrossEntropyLoss)
 
-                    prior = init_prior(base_network, prior_curvature_type, dataloaders[0][1][0],
-                                       weight_decay, prior_curvature_scaling, isotropic_prior,
-                                       curvature_device, curvature_scaling_device, prior_curvature_path,
-                                       negative_data_log_likelihood, len_data)
+                    prior = init_prior(
+                        base_network, prior_curvature_type, dataloaders[0][1][0],
+                        weight_decay, prior_curvature_scaling, isotropic_prior,
+                        curvature_device, curvature_scaling_device, prior_curvature_path,
+                        negative_data_log_likelihood, len_data)
 
                     model = BayesianProgressiveNeuralNetwork(
                         prior=prior,
@@ -346,7 +362,7 @@ def sweep_bpnn(prefix: str,
                         curvature_scaling_device=curvature_scaling_device,
                     )
 
-                    if checkpoint_dir:
+                    if checkpoint_path:
                         number = get_name(name, return_number=True)
                         models_path = os.path.join(base_path, 'models', f'{name}_{number}')
                         id = max(int(el[:-3].split('_')[-1]) for el in os.listdir(models_path) if el.endswith('.pt'))
@@ -381,8 +397,9 @@ def sweep_bpnn(prefix: str,
                         torch.cuda.empty_cache()
                     if evaluate_each_temperature:
                         for temperature_scaling in temperature_scalings:
-                            model.update_scaling(temperature_scaling=temperature_scaling,
-                                                 update_slice=slice(None))
+                            model.update_scaling(
+                                temperature_scaling=temperature_scaling,
+                                update_slice=slice(None))
                             name = f'{prefix}BPNN_{curvature_type_name}_' \
                                    f'{criterion_type_name}_{weight_decay}_' \
                                    f'{curvature_scaling_name}_{temperature_scaling}'
@@ -392,37 +409,39 @@ def sweep_bpnn(prefix: str,
                             d = {}
                             is_classification = [type(loss_function) is type(nn.CrossEntropyLoss())
                                                  for _, _, loss_function in dataloaders[1:]]
-                            d['metrics'] = [{'test': evaluate_pnn(model, dataloaders[1:],
-                                                                  range(0, len(dataloaders) - 1),
-                                                                  compute_pac_bounds=compute_pac_bounds,
-                                                                  confidence=confidence,
-                                                                  is_classification=is_classification)}]
+                            d['metrics'] = [{
+                                                'test': evaluate_pnn(
+                                                    model, dataloaders[1:],
+                                                    range(0, len(dataloaders) - 1),
+                                                    compute_pac_bounds=compute_pac_bounds,
+                                                    confidence=confidence,
+                                                    is_classification=is_classification)
+                                            }]
                             with open(result_path, 'w') as f:
                                 json.dump(d, f, indent=4, default=str)
                             evaluate_ood(model, ood_dataloaders, ood_dims, result_path)
 
 
-def sweep_dpnn(prefix: str,
-               dataloaders: List[Tuple[Optional[int],
-                                       Tuple[DataLoader, DataLoader, DataLoader],
-                                       nn.Module]],
-               network: nn.Module,
-               backbone: Optional[nn.Module],
-               last_layer_name: str,
-               lateral_connections: List[str],
-               pretrained: bool,
-               weight_decays: List[float],
-               dropout_probabilities: List[float],
-               dropout_positions: List[str],
-               learning_rate: float = 2e-3,
-               num_epochs: int = 100,
-               patience: int = 10,
-               eval_every_task: bool = True,
-               ood_dataloaders: Optional[
-                   List[Tuple[Optional[int],
-                              Tuple[DataLoader, DataLoader, DataLoader],
-                              nn.Module]]] = None,
-               ood_dims: Optional[Iterable[int]] = None):
+def sweep_dpnn(
+        prefix: str,
+        dataloaders: List[Tuple[Optional[int], Tuple[DataLoader, DataLoader, DataLoader], nn.Module]],
+        network: nn.Module,
+        backbone: Optional[nn.Module],
+        last_layer_name: str,
+        lateral_connections: List[str],
+        pretrained: bool,
+        weight_decays: List[float],
+        dropout_probabilities: List[float],
+        dropout_positions: List[str],
+        learning_rate: float = 2e-3,
+        num_epochs: int = 100,
+        patience: int = 10,
+        eval_every_task: bool = True,
+        ood_dataloaders: Optional[
+            List[Tuple[Optional[int],
+            Tuple[DataLoader, DataLoader, DataLoader],
+            nn.Module]]] = None,
+        ood_dims: Optional[Iterable[int]] = None):
     """Sweeps multiple configurations of Dropout Progressive Neural Networks.
 
     The results are saved in the results folder for each model individually as a
@@ -467,6 +486,7 @@ def sweep_dpnn(prefix: str,
         learning_rate: The learning rate used in the full training
         num_epochs: The number of epochs used in the full training
         patience: The patience used in the full training
+        eval_every_task: Whether to evaluate the model after each task
         ood_dataloaders: A tuple of output dimensions and train-, val-, and
             test-dataloaders
         ood_dims: The columns that should be used for each dataloader
@@ -481,16 +501,18 @@ def sweep_dpnn(prefix: str,
             if not pretrained:
                 loss_function = dataloaders[0][2]
                 base_network.requires_grad_(True)
-                fit(base_network, dataloaders[0][1], loss_function, weight_decay,
+                fit(
+                    base_network, dataloaders[0][1], loss_function, weight_decay,
                     is_classification=type(loss_function) is nn.CrossEntropyLoss,
                     learning_rate=learning_rate, num_epochs=num_epochs, patience=patience)
 
-            model = DropoutProgressiveNeuralNetwork(base_network=base_network,
-                                                    backbone=backbone,
-                                                    last_layer_name=last_layer_name,
-                                                    lateral_connections=deepcopy(lateral_connections),
-                                                    dropout_probability=dropout_probability,
-                                                    dropout_positions=dropout_positions)
+            model = DropoutProgressiveNeuralNetwork(
+                base_network=base_network,
+                backbone=backbone,
+                last_layer_name=last_layer_name,
+                lateral_connections=deepcopy(lateral_connections),
+                dropout_probability=dropout_probability,
+                dropout_positions=dropout_positions)
             result_path = os.path.join(base_path, 'results', name + '.json')
             run_and_save_params_and_output(
                 function=fit_pnn,
@@ -511,25 +533,24 @@ def sweep_dpnn(prefix: str,
             evaluate_ood(model, ood_dataloaders, ood_dims, result_path)
 
 
-def sweep_pnn(prefix: str,
-              dataloaders: List[Tuple[Optional[int],
-                                      Tuple[DataLoader, DataLoader, DataLoader],
-                                      nn.Module]],
-              network: nn.Module,
-              backbone: Optional[nn.Module],
-              last_layer_name: str,
-              lateral_connections: List[str],
-              pretrained: bool,
-              weight_decays: List[float],
-              learning_rate: float = 2e-3,
-              num_epochs: int = 100,
-              patience: int = 10,
-              eval_every_task: bool = True,
-              ood_dataloaders: Optional[
-                  List[Tuple[Optional[int],
-                             Tuple[DataLoader, DataLoader, DataLoader],
-                             nn.Module]]] = None,
-              ood_dims: Optional[Iterable[int]] = None):
+def sweep_pnn(
+        prefix: str,
+        dataloaders: List[Tuple[Optional[int], Tuple[DataLoader, DataLoader, DataLoader], nn.Module]],
+        network: nn.Module,
+        backbone: Optional[nn.Module],
+        last_layer_name: str,
+        lateral_connections: List[str],
+        pretrained: bool,
+        weight_decays: List[float],
+        learning_rate: float = 2e-3,
+        num_epochs: int = 100,
+        patience: int = 10,
+        eval_every_task: bool = True,
+        ood_dataloaders: Optional[
+            List[Tuple[Optional[int],
+            Tuple[DataLoader, DataLoader, DataLoader],
+            nn.Module]]] = None,
+        ood_dims: Optional[Iterable[int]] = None):
     """Sweeps multiple configurations of Progressive Neural Networks.
 
     The results are saved in the results folder for each model individually as a
@@ -569,6 +590,7 @@ def sweep_pnn(prefix: str,
         learning_rate: The learning rate used in the full training
         num_epochs: The number of epochs used in the full training
         patience: The patience used in the full training
+        eval_every_task: Whether to evaluate the model after each task
         ood_dataloaders: A tuple of output dimensions and train-, val-, and
             test-dataloaders
         ood_dims: The columns that should be used for each dataloader
@@ -582,14 +604,16 @@ def sweep_pnn(prefix: str,
         if not pretrained:
             loss_function = dataloaders[0][2]
             base_network.requires_grad_(True)
-            fit(base_network, dataloaders[0][1], loss_function, weight_decay,
+            fit(
+                base_network, dataloaders[0][1], loss_function, weight_decay,
                 is_classification=type(loss_function) is nn.CrossEntropyLoss,
                 learning_rate=learning_rate, num_epochs=num_epochs, patience=patience)
 
-        model = ProgressiveNeuralNetwork(base_network=base_network,
-                                         backbone=backbone,
-                                         last_layer_name=last_layer_name,
-                                         lateral_connections=deepcopy(lateral_connections))
+        model = ProgressiveNeuralNetwork(
+            base_network=base_network,
+            backbone=backbone,
+            last_layer_name=last_layer_name,
+            lateral_connections=deepcopy(lateral_connections))
         result_path = os.path.join(base_path, 'results', name + '.json')
         run_and_save_params_and_output(
             function=fit_pnn,

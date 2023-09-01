@@ -1,12 +1,13 @@
+from copy import deepcopy
 from random import randint
 
 import pytest
-from copy import deepcopy
+import torch
+from torch import nn
 
 from src.bpnn.pnn import ProgressiveNeuralNetwork, \
     ProbabilisticProgressiveNeuralNetwork, DropoutProgressiveNeuralNetwork
-from torch import nn
-import torch
+
 
 class SimpleNet(nn.Module):
     def __init__(self):
@@ -46,12 +47,12 @@ def simple_net_forward(networks, x):
 
 def weighted_module_same(module1, module2):
     return torch.all(module1.weight == module2.weight).item() \
-           and torch.all(module1.bias == module2.bias).item()
+        and torch.all(module1.bias == module2.bias).item()
 
 
 def weighted_module_close(module1, module2):
     return torch.allclose(module1.weight, module2.weight, rtol=1e-3) \
-           and torch.allclose(module1.bias, module2.bias, rtol=1e-3)
+        and torch.allclose(module1.bias, module2.bias, rtol=1e-3)
 
 
 def assert_networks_same(network1, network2):
@@ -70,13 +71,14 @@ def assert_networks_same(network1, network2):
                 assert torch.all(module1.weight == module2.weight).item()
 
 
-class TestProgressiveNeuralNetworks():
+class TestProgressiveNeuralNetworks:
     @pytest.mark.parametrize(['differ_from_previous', 'resample_base_network'],
                              [[True, True], [True, False], [False, False], [False, True]])
     def test_add_new_column_and_forward(self, differ_from_previous, resample_base_network, network):
         pnn = pnn_from_network(network)
         pnn.add_new_column(True, differ_from_previous=differ_from_previous, resample_base_network=resample_base_network)
-        pnn.add_new_column(False, 2, differ_from_previous=differ_from_previous, resample_base_network=resample_base_network)
+        pnn.add_new_column(False, 2, differ_from_previous=differ_from_previous,
+                           resample_base_network=resample_base_network)
         print(pnn.is_classification)
         assert pnn.is_classification[0] and not pnn.is_classification[1]
         # test resample base network and differ from previous
@@ -151,7 +153,8 @@ class TestProgressiveNeuralNetworks():
         for module in pnn.modules():
             assert module not in pnn.backbone.modules()
 
-class TestProbabilisticProgressiveNeuralNetwork():
+
+class TestProbabilisticProgressiveNeuralNetwork:
 
     def ppnn_and_record(self, network, train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples):
         record = []
@@ -160,8 +163,10 @@ class TestProbabilisticProgressiveNeuralNetwork():
             def _sample_and_replace(self,
                                     resample_slice: slice):
                 for network in self.networks[resample_slice]:
-                    network.apply(lambda module: module.reset_parameters() if hasattr(module, 'reset_parameters') else None)
+                    network.apply(
+                        lambda module: module.reset_parameters() if hasattr(module, 'reset_parameters') else None)
                 record.append(deepcopy(self))
+
         ppnn = ImplementedPPNN(network, None, 'linear4', ['linear2', 'linear3'],
                                train_resample_slice, train_num_samples, eval_resample_slice, eval_num_samples)
         for _ in range(5):
@@ -218,7 +223,7 @@ class TestProbabilisticProgressiveNeuralNetwork():
         assert ppnn.eval_num_samples == ppnn_copy.eval_num_samples
 
 
-class TestDropoutProgressiveNeuralNetwork():
+class TestDropoutProgressiveNeuralNetwork:
 
     def test_dpnn(self, network):
         # dropout at correct positions

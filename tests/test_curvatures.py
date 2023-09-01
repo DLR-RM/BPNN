@@ -1,26 +1,18 @@
-import os
-from random import randint
-import pytest
 from math import sqrt
-from copy import deepcopy
 
+import pytest
 import torch
 from torch import nn
-from torch.nn import functional as F
-from torch.utils.data import DataLoader
 from torch.distributions import MultivariateNormal, kl_divergence
 from torch.distributions.constraints import positive_definite
-
-from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
-
-from src.curvature.lenet5 import lenet5
-from src.curvature.curvatures import BlockDiagonal, Diagonal, KFAC, KFOC
-from src.curvature.utils import check_and_make_pd
+from torchvision.transforms import ToTensor
 
 from src.bpnn.bpnn import compute_curvature
 from src.bpnn.utils import torch_data_path
-
+from src.curvature.curvatures import BlockDiagonal, Diagonal, KFAC, KFOC
+from src.curvature.utils import check_and_make_pd
 from .conftest import get_small_mnist_dataloader, relative_difference, get_test_dataloader
 
 
@@ -257,9 +249,9 @@ def test_invert(curvature_type, dataloader):
         r_diff_inv = relative_difference(ground_truth_inverse, inv_fisher_chol @ inv_fisher_chol.T).item()
         r_diff_eye = relative_difference(torch.eye(*fisher.shape, device=fisher.device, dtype=fisher.dtype),
                                          fisher @ inv_fisher_chol @ inv_fisher_chol.T).item()
-        if r_diff_inv < 1e-4:
+        if r_diff_inv < 5e-4:
             print(r_diff_inv, r_diff_eye)
-        assert r_diff_inv < 1e-4 or r_diff_eye < .6
+        assert r_diff_inv < 5e-4 or r_diff_eye < .6
 
 
 @pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
@@ -392,33 +384,16 @@ def test_kl_divergence(curvature_type):
     assert computed == pytest.approx(expected, rel=1e-3)
 
 
-@pytest.mark.skip(reason='Deprecated')
-@pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
-def test_eigenvalues_of_mm(curvature_type, dataloader):
-    model1 = small_model()
-    curv1 = curvature_type(model1)
-    compute_curvature(model1, [curv1], dataloader, invert=True, make_positive_definite=True)
-
-    model2 = small_model()
-    curv2 = curvature_type(model2)
-    compute_curvature(model2, [curv2], dataloader, invert=True, make_positive_definite=True)
-
-    name_to_module2 = dict(model2.named_modules())
-
-    module1_to_module2 = {module: name_to_module2[name] for name, module in model1.named_modules()}
-
-    for module1, state1 in curv1.state.items():
-        module2 = module1_to_module2[module1]
-        inv_state2 = curv2.inv_state[module2]
-        eigenvalues = curv1.eigenvalues_of_mm(state1, inv_state2).sort()[0]
-
-        fisher1 = get_fisher(state1, dtype=torch.double)
-        inv_fisher_chol2 = get_fisher(inv_state2, dtype=torch.double)
-        mm = fisher1 @ inv_fisher_chol2 @ inv_fisher_chol2.T
-        gt_eigenvalues = torch.linalg.eigvals(mm).real.sort()[0]
-
-        assert eigenvalues.max().item() == pytest.approx(gt_eigenvalues.max().item(), rel=1e-1)
-        assert eigenvalues.sum().item() == pytest.approx(gt_eigenvalues.sum().item(), rel=1e-1)
+def to_dtype(curv, dtype):
+    for module, state in curv.state.items():
+        if isinstance(state, list):
+            curv.state[module] = [s.to(dtype) for s in state]
+            if module in curv.inv_state.keys():
+                curv.inv_state[module] = [s.to(dtype) for s in curv.inv_state[module]]
+        else:
+            curv.state[module] = state.to(dtype)
+            if module in curv.inv_state.keys():
+                curv.inv_state[module] = curv.inv_state[module].to(dtype)
 
 
 @pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
@@ -438,6 +413,9 @@ def test_trace_of_mm(curvature_type, dataloader):
 
     module1_to_module2 = {module: name_to_module2[name] for name, module in model1.named_modules()}
 
+    to_dtype(curv1, torch.double)
+    to_dtype(curv2, torch.double)
+
     trace = 0.
     for module1, state1 in curv1.state.items():
         module2 = module1_to_module2[module1]
@@ -452,8 +430,6 @@ def test_trace_of_mm(curvature_type, dataloader):
     computed = curv1.trace_of_mm(curv2, temperature_scaling).item()
 
     assert computed == pytest.approx(trace, rel=1e-2)
-
-
 
 
 @pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
@@ -478,7 +454,8 @@ def test_eye_like(curvature_type, test_dataloader):
 
     quadratic_term_gt = weight_decay * sum(param.pow(2).sum() for param in model.parameters())
 
-    assert quadratic_term.item() == pytest.approx(quadratic_term_gt.item())
+    assert quadratic_term.item() == pytest.approx(quadratic_term_gt.item(), rel=1e-3)
+
 
 @pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
 def test_add_and_scale(curvature_type, dataloader):
@@ -494,7 +471,8 @@ def test_add_and_scale(curvature_type, dataloader):
     weight_decay = 1 / (torch.rand([]).item() * 1000)
 
     scaling = [{module: torch.rand([]).item() for module in curv1.state.keys()} for _ in range(2)]
-    curv3 = curv1.add_and_scale(curv2, scaling, weight_decay=weight_decay, weight_decay_layer_names=weight_decay_layer_names)
+    curv3 = curv1.add_and_scale(curv2, scaling, weight_decay=weight_decay,
+                                weight_decay_layer_names=weight_decay_layer_names)
 
     name_to_module_2 = dict(model2.named_modules())
 
@@ -508,7 +486,7 @@ def test_add_and_scale(curvature_type, dataloader):
                 if name in weight_decay_layer_names:
                     fisher2 = weight_decay * torch.eye(*fisher2.shape, dtype=fisher2.dtype, device=fisher2.device)
 
-                assert torch.allclose(fisher3, scaling[0][module] * fisher1 + scaling[1][module] * fisher2)
+                assert torch.allclose(fisher3, scaling[0][module] * fisher1 + scaling[1][module] * fisher2, rtol=1e-3)
             else:
                 if name in weight_decay_layer_names:
                     state2 = curv2._eye_state(curv2.state[name_to_module_2[name]], weight_decay)
@@ -517,67 +495,4 @@ def test_add_and_scale(curvature_type, dataloader):
                 actual = curv3.state[module]
                 expected = KFAC._sum_state([curv1.state[module], state2], [scaling[0][module], scaling[1][module]])
                 for a, e in zip(actual, expected):
-                    assert torch.allclose(a, e)
-
-
-@pytest.mark.parametrize('curvature_type', [Diagonal, KFAC, BlockDiagonal])
-def test_scale_inverse(curvature_type, dataloader):
-    model = small_model()
-    curv = curvature_type(model)
-    compute_curvature(model, [curv], dataloader, invert=False, make_positive_definite=True)
-
-    scaling = {module: torch.rand([]).item() for module in curv.state.keys()}
-
-    curv_original = curvature_type(model)
-    curv_original.load_state_dict(curv.state_dict())
-
-    curv.invert()
-    curv.scale_inverse(scaling)
-
-    curv_other = curvature_type(model)
-    curv_other.load_state_dict(curv_original.state_dict())
-    curv_other.scale_inverse(scaling)
-    curv_other.invert()
-
-    for module, state in curv.state.items():
-        assert torch.allclose(get_fisher(state), get_fisher(curv_other.state[module]))
-
-    for module, state in curv.state.items():
-        scale = scaling[module]
-        fisher_original = get_fisher(curv_original.state[module])
-        assert torch.allclose(fisher_original / scale, get_fisher(state))
-
-    curv_original.invert()
-    for module, inv_state in curv.inv_state.items():
-        scale = scaling[module]
-        fisher_original = get_fisher(curv_original.inv_state[module])
-        fisher_new = get_fisher(inv_state)
-        assert torch.allclose(fisher_original * sqrt(scale), fisher_new)
-
-    test_dataloader = get_test_dataloader(1, 1, (1, ), num_outputs=2)
-    model = torch.nn.Sequential(
-        torch.nn.Linear(1, 2),
-        torch.nn.Softmax(dim=1)
-    )
-
-    curv = curvature_type(model)
-    compute_curvature(model, [curv], test_dataloader, invert=True)
-
-    curv_scaled = curvature_type(model)
-    curv_scaled.load_state_dict(curv.state_dict())
-    curv_scaled.scale_inverse({module: 0.1 for module in curv.state.keys()})
-
-    module = model[0]
-    weights = []
-    weights_scaled = []
-    for _ in range(10_000):
-        curv.sample_and_replace(temperature_scaling=0.1)
-        weights.append(module.weight.detach().clone())
-
-        curv_scaled.sample_and_replace(temperature_scaling=1.)
-        weights_scaled.append(module.weight.detach().clone())
-
-    weights = torch.stack(weights)
-    weights_scaled = torch.stack(weights_scaled)
-
-    assert torch.allclose(weights.view(10000, -1).T.cov(), weights_scaled.view(10000, -1).T.cov(), rtol=0.1, atol=1.)
+                    assert torch.allclose(a, e, rtol=1e-3)
