@@ -14,14 +14,6 @@ Dominik Schnaus, Jongseok Lee, and Rudolph Triebel. _NeurIPS 2021 BDL Workshop_.
 [[Poster](poster_kfoc.pdf)]
 
 ## Description
-### Kronecker-Factored Optimal Curvature
-
-The Kronecker-Factored Optimal Curvature (K-FOC) improves the approximation quality of the Fisher Information Matrix (FIM)
-as a Kronecker-factored matrix compared to the widely-adopted Kronecker-Factored Approximate Curvature (K-FAC)[^1]. 
-For this, we adapted the power method to find the optimal Kronecker factors for a batch of samples where each step has
-a similar complexity as K-FAC.
-
-
 ### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
 
 We learn prior distributions for Bayesian neural networks using Laplace approximation[^2]. Furthermore, we use a novel
@@ -34,6 +26,16 @@ previously learned features and priors to improve the performance on the later t
 
 Altogether, this implementation also includes a general version of PNN that can use arbitrary 
 network architectures and an implementation of PNN that includes MC Dropout[^4].
+
+### Kronecker-Factored Optimal Curvature
+
+The Kronecker-Factored Optimal Curvature (K-FOC) improves the approximation quality of the Fisher Information Matrix (FIM)
+as a Kronecker-factored matrix compared to the widely-adopted Kronecker-Factored Approximate Curvature (K-FAC)[^1]. 
+For this, we adapted the power method to find the optimal Kronecker factors for a batch of samples where each step has
+a similar complexity as K-FAC.
+
+
+
 
 
 ## Installation
