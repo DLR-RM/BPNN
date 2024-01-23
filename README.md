@@ -117,6 +117,9 @@ python scripts/bpnn/ablations/cold_posterior_large.py
 #### Generalization in Bayesian Continual Learning
 The script and the commands to run the experiment are given in `scripts/bpnn/bayesian_continual_learning.py`.
 
+#### Uncertainty in Few-shot Classification
+The script and the commands to run the experiment are given in `scripts/bpnn/fewshot_uncertainty.py`.
+
 ## Usage
 
 ### Kronecker-Factored Optimal Curvature
