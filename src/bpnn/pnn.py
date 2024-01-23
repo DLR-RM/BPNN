@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 
 from .utils import fit, base_path, run_epoch, get_dataset_and_name, \
     mc_allester_bound, catoni_bound
+from src.utils import evaluate_fewshot_uncertainty
 
 
 def nested_module_dict(
@@ -787,4 +788,33 @@ def evaluate_pnn(
             f'{dumps(test_metric, sort_keys=True, indent=4, default=str)}')
         test_metrics.append(test_metric)
 
+    return test_metrics
+
+def evaluate_fewshot(model, dataloaders, device, metrics_dim=0):
+    """Evaluates ProgressiveNeuralNetworks for few shot classification.
+    Args:
+        model: A ProgressiveNeuralNetwork object
+        dataloaders: test data loader
+        device: cpu or gpu
+    Returns:
+        A dict containing the evaluation metrics
+    """
+    # model preparations
+    model.eval()
+    model.requires_grad_(False)
+    model.to(device)
+
+    # collect results
+    target_list = []
+    prob_list = []
+    for iter_num, (features, targets) in enumerate(dataloaders):
+        features, targets = features.to(device), targets.to(device)
+        logits = model(features)
+        probs = F.softmax(logits[metrics_dim], dim=-1)
+        probs = probs.mean(dim=1)        
+        target_list.append(targets.cpu().numpy())
+        prob_list.append(probs.cpu().numpy())
+    prob_numpy = np.concatenate(prob_list, axis=0)
+    target_numpy = np.concatenate(target_list, axis=0)
+    test_metrics = evaluate_fewshot_uncertainty(prob_numpy, target_numpy)
     return test_metrics

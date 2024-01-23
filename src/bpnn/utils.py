@@ -7,6 +7,9 @@ from typing import List, Dict, Union, Optional, Callable, Tuple, Any, Iterable
 
 import numpy as np
 import torch
+import pickle
+import robustness_metrics as rm
+
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Subset
@@ -16,11 +19,8 @@ from src.curvature.curvatures import Curvature
 from src.curvature.utils import seed_all_rng
 
 seed = seed_all_rng()
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 base_path = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))
-
 torch_data_path = os.path.join(base_path, 'data', 'torch')
 
 
@@ -1164,3 +1164,38 @@ class HalfMSELoss(nn.MSELoss):
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         return F.mse_loss(input, target, reduction=self.reduction) / 2.
+
+def evaluate_fewshot_uncertainty(probs: np.array, labels_test: np.array) -> dict:
+    """Evaluates metrics for fewshot from uncertainty baselines.
+    Both inputs in numpy arrays of same shape!
+    """
+    # Accuracy.
+    int_preds = np.argmax(probs, axis=1)
+    accuracy = np.mean(int_preds == labels_test)
+
+    # ECE
+    ece = rm.metrics.ExpectedCalibrationError(num_bins=15)
+    ece.add_batch(probs, label=labels_test)
+    ece_res = ece.result()["ece"]
+
+    # NLL
+    nll_metric = rm.metrics.NegativeLogLikelihood()
+    nll_metric.add_batch(probs, label=labels_test)
+    nll_res = nll_metric.result()["nll"]
+
+    # AUC
+    calib_auc = rm.metrics.CalibrationAUC(correct_pred_as_pos_label=False)
+    int_preds = np.argmax(probs, axis=-1)
+    confidence = np.max(probs, axis=-1)
+    calib_auc.add_batch(
+    int_preds, label=labels_test, confidence=confidence.astype("float32"))
+    calib_auc_res = calib_auc.result()["calibration_auc"]
+
+    metric_results = {
+    "test_prec@1": accuracy,
+    "test_ece": ece_res,
+    "test_nll": nll_res,
+    "test_calib_auc": calib_auc_res,
+    }
+
+    return metric_results
