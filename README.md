@@ -187,6 +187,8 @@ Examples of a full training and evaluation can be found in `scripts/bpnn/`.
 │   ├── evaluate_experiment.py              <- Functions to evaluate the JSON files after the training.
 │   ├── mnist_dataloaders.py                <- Generates the dataloaders used to train the small-scale 
 │   │                                           continual learning experiment.
+│   ├── fewshot.py                          <- The fewshot learning uncertainty dataset.
+│   ├── fewshot_dataloaders.py              <- Generates the dataloaders used for fewshot learning.
 │   ├── not_mnist.py                        <- The NotMNIST Dataset.
 │   ├── run_experiment.py                   <- Functions to run multiple configurations of BPNN and PNN.
 │   ├── wrgbd.py                            <- The Washington University's RGB-D Object (WRGBD) Dataset.
