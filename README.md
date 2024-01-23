@@ -124,12 +124,6 @@ The script and the commands to run the experiment are given in `scripts/bpnn/few
 
 ## Usage
 
-### Kronecker-Factored Optimal Curvature
-
-To use the curvatures, please follow the steps of the [official curvature library] where this curvature 
-implementation is forked from. K-FOC can be used the same as K-FAC. Additionally, `src/bpnn/utils.py` 
-includes `compute_curvature` which contains the loop to compute the curvature for a model over a dataset.
-
 ### Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks
 
 To run own experiments using the learned prior and Bayesian Progressive Neural Networks, one can use the functions 
@@ -145,6 +139,12 @@ The functions in `tools/evaluate_experiment.py` can be used to evaluate and plot
 
 Please see the docstrings of the functions for more information.
 Examples of a full training and evaluation can be found in `scripts/bpnn/`.
+
+### Kronecker-Factored Optimal Curvature
+
+To use the curvatures, please follow the steps of the [official curvature library] where this curvature 
+implementation is forked from. K-FOC can be used the same as K-FAC. Additionally, `src/bpnn/utils.py` 
+includes `compute_curvature` which contains the loop to compute the curvature for a model over a dataset.
 
 ## Project Organization
 
