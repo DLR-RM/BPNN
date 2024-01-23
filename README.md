@@ -2,16 +2,16 @@
 
 Bayesian Progressive Neural Networks (BPNN) is the official code base for the following works:
 
-**[Kronecker-Factored Optimal Curvature]** \
-Dominik Schnaus, Jongseok Lee, and Rudolph Triebel. _NeurIPS 2021 BDL Workshop_.\
-[[Paper](http://bayesiandeeplearning.org/2021/papers/33.pdf)] 
-[[Poster](poster_kfoc.pdf)]
-
 **[Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks]** \
 Dominik Schnaus, Jongseok Lee, Daniel Cremers, Rudolph Triebel. ICML 2023.\
 [[Paper](https://proceedings.mlr.press/v202/schnaus23a/schnaus23a.pdf)] 
 [[Poster](https://icml.cc/media/PosterPDFs/ICML%202023/23901.png?t=1689841529.0378458)] 
 [[Video](https://slideslive.com/39003754)]
+
+**[Kronecker-Factored Optimal Curvature]** \
+Dominik Schnaus, Jongseok Lee, and Rudolph Triebel. _NeurIPS 2021 BDL Workshop_.\
+[[Paper](http://bayesiandeeplearning.org/2021/papers/33.pdf)] 
+[[Poster](poster_kfoc.pdf)]
 
 ## Description
 ### Kronecker-Factored Optimal Curvature
@@ -200,14 +200,6 @@ Examples of a full training and evaluation can be found in `scripts/bpnn/`.
 ## Citation
 If you find this project useful, please cite us in the following ways:
 ```
-@inproceedings{schnaus2021kronecker,
-  title = {Kronecker-Factored Optimal Curvature},
-  author = {Schnaus, Dominik and Lee, Jongseok and Triebel, Rudolph},
-  year = {2021},
-  maintitle = {Thirty-fifth Conference on Neural Information Processing Systems},
-  booktitle = {Bayesian Deep Learning Workshop},
-}
-
 @inproceedings{schnaus2023,
   title = {Learning Expressive Priors for Generalization and Uncertainty Estimation in Neural Networks},
   author = {Schnaus, Dominik and Lee, Jongseok and Cremers, Daniel and Triebel, Rudolph},
@@ -223,6 +215,13 @@ If you find this project useful, please cite us in the following ways:
   url = {https://proceedings.mlr.press/v202/schnaus23a.html},
 }
 
+@inproceedings{schnaus2021kronecker,
+  title = {Kronecker-Factored Optimal Curvature},
+  author = {Schnaus, Dominik and Lee, Jongseok and Triebel, Rudolph},
+  year = {2021},
+  maintitle = {Thirty-fifth Conference on Neural Information Processing Systems},
+  booktitle = {Bayesian Deep Learning Workshop},
+}
 ```
 
 <!-- pyscaffold-notes -->
