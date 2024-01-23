@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Callable, Any, List, Optional, Tuple, Iterable
 
 import torch
+import tensorflow_datasets as tfds
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -15,9 +16,11 @@ from src.bpnn.criterions import CatoniCriterion, MaximumAPosterioriCriterion, \
 from src.bpnn.curvature_scalings import CatoniScaling, McAllesterScaling, \
     StandardBayes, CurvatureScaling, ValidationScaling
 from src.bpnn.pnn import fit_pnn, evaluate_pnn, ProgressiveNeuralNetwork, \
-    dataset_step_pnn, DropoutProgressiveNeuralNetwork, dataset_step_ppnn
-from src.bpnn.utils import base_path, seed, device, fit
+    dataset_step_pnn, DropoutProgressiveNeuralNetwork, dataset_step_ppnn, evaluate_fewshot
+from src.bpnn.utils import base_path, seed, device, fit, HalfMSELoss
 from src.curvature.curvatures import KFAC, KFOC, Diagonal
+from tools.fewshot_dataloaders import train_torch_loader, test_torch_loader, validation_torch_loader
+
 
 model_to_abbreviation = {
     BayesianProgressiveNeuralNetwork: 'BPNN',
@@ -54,7 +57,6 @@ def run_and_save_params_and_output(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-
 def get_name(name: str = 'unnamed', return_number: bool = False):
     """Searches for the name in the models folder and increments the number
     after the name.
@@ -76,7 +78,6 @@ def get_name(name: str = 'unnamed', return_number: bool = False):
         return num
     else:
         return new_name
-
 
 def evaluate_ood(
         model: ProgressiveNeuralNetwork,
@@ -103,6 +104,57 @@ def evaluate_ood(
         with open(result_path, 'w') as f:
             json.dump(d, f, indent=4, default=str)
 
+def evaluate_fewshot_uncertainty(model: ProgressiveNeuralNetwork,
+                                 test_dataloaders: List[Tuple[Optional[int],
+                                                            Tuple[DataLoader,
+                                                                DataLoader,
+                                                                DataLoader]]],
+                                 result_path: str):
+
+    """Evaluates the model on dataloaders and saves the results in an existing
+    file.
+
+    Args:
+        model: A ProgressiveNeuralNetwork object
+        test_dataloaders: A tuple of output dimensions and train-, val-, and
+            test-dataloaders
+        result_path: The path to the file where the results are saved
+    """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if test_dataloaders:
+        with open(result_path, 'r') as f:
+            d = json.load(f)
+            metric = evaluate_fewshot(model, test_dataloaders[1][1][2], device)
+            print("few-shot learning / metrics", metric)
+            d['fewshot'] = metric
+        with open(result_path, 'w') as f:
+            json.dump(d, f, indent=4, default=str)
+
+def evaluate_oodfewshot_uncertainty(model: ProgressiveNeuralNetwork,
+                                    test_dataloaders: List[Tuple[Optional[int],
+                                                                Tuple[DataLoader,
+                                                                    DataLoader,
+                                                                    DataLoader]]],
+                                    result_path: str):
+
+    """Evaluates the model on dataloaders and saves the results in an existing
+    file.
+
+    Args:
+        model: A ProgressiveNeuralNetwork object
+        test_dataloaders: A tuple of output dimensions and train-, val-, and
+            test-dataloaders
+        result_path: The path to the file where the results are saved
+    """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if test_dataloaders:
+        with open(result_path, 'r') as f:
+            d = json.load(f)
+            metric = evaluate_fewshot(model, test_dataloaders[0][1][2], device)
+            print("few-shot learning / metrics", metric)
+            d['fewshot_ood'] = metric
+        with open(result_path, 'w') as f:
+            json.dump(d, f, indent=4, default=str)
 
 def save_scaling(
         model: BayesianProgressiveNeuralNetwork,
@@ -632,3 +684,252 @@ def sweep_pnn(
             ood_dims=ood_dims,
             compute_pac_bounds=False)
         evaluate_ood(model, ood_dataloaders, ood_dims, result_path)
+
+def sweep_fewshot_bpnns(prefix: str,
+                        dataloaders: List[Tuple[Optional[int],
+                                                Tuple[DataLoader, DataLoader, DataLoader],
+                                                nn.Module]],
+                        network: nn.Module,
+                        backbone: Optional[nn.Module],
+                        last_layer_name: str,
+                        lateral_connections: List[str],
+                        curvature_types: List[str],
+                        weight_decays: List[float],
+                        criterion_types: List[str],
+                        curvature_scalings: List[str],
+                        pretrained: bool,
+                        curvature_device: Optional[torch.device],
+                        curvature_num_samples: int = 1,
+                        learning_rate: float = 2e-3,
+                        num_epochs: int = 100,
+                        patience: int = 10,
+                        compute_pac_bounds: bool = True,
+                        confidence: float = 0.8,
+                        temperature_scalings: Optional[List[float]] = None,
+                        evaluate_each_temperature: bool = False,
+                        prior_curvature_scalings: Optional[List[CurvatureScaling]] = None,
+                        prior_curvature_path: Optional[str] = None,
+                        prior_curvature_type: Optional[str] = None,
+                        negative_data_log_likelihood: Optional[float] = None,
+                        len_data: Optional[int] = None,
+                        ood_dataloaders: Optional[
+                            List[Tuple[Optional[int],
+                                        Tuple[DataLoader, DataLoader, DataLoader],
+                                        nn.Module]]] = None,
+                        ood_dims: Optional[Iterable[int]] = None,
+                        alphas_betas: Optional[Tuple[List[float], List[float]]] = None,
+                        validation_scaling_num_samples: Optional[int] = None,
+                        fixed: Optional[Tuple[float, float, float]] = None,
+                        shared: Optional[Tuple[bool, bool, bool]] = None,
+                        curvature_scaling_device: Optional[torch.device] = None,
+                        FLAGS=None):
+    """ See descriptions at different place.
+    """
+
+    print("Initializing the functions - sweep_fewshot_bpnn")
+    ood_evaluate=False
+    if prior_curvature_scalings is None:
+        prior_curvature_scalings = [None]
+
+    name_to_curvature_type = {
+        'KFAC': KFAC,
+        'KFOC': KFOC,
+        'Diagonal': Diagonal
+    }
+
+    name_to_criterion_type = {
+        'MAP': MaximumAPosterioriCriterion,
+        'McAllester': McAllesterCriterion,
+        'Catoni': CatoniCriterion
+    }
+
+    name_to_curvature_scale = {
+        'Standard': StandardBayes,
+        'McAllester': McAllesterScaling,
+        'Catoni': CatoniScaling,
+        'Validation': ValidationScaling,
+    }
+
+    if alphas_betas is not None:
+        alphas, betas = alphas_betas
+
+    if fixed is None:
+        fixed = (None, None, None)
+
+    if shared is None:
+        shared = (False, False, False)
+
+    for curvature_type_name in curvature_types:
+        assert curvature_type_name in name_to_curvature_type.keys()
+        curvature_type = name_to_curvature_type[curvature_type_name]
+        for weight_decay in weight_decays:
+            print("Looping over the weight decay", weight_decay)
+
+            for criterion_type_name, curvature_scaling_name in zip(criterion_types, curvature_scalings):
+                print("Looping over criterion_type_name", criterion_type_name)
+                print("And curvature_scaling_name", curvature_scaling_name)
+                criterion_type = name_to_criterion_type[criterion_type_name]
+                if curvature_scaling_name == 'Validation':
+                    assert alphas_betas is not None, \
+                        'alphas_betas needs to be specified, when using ValidationScaling'
+                    assert validation_scaling_num_samples is not None, \
+                        'validation_scaling_num_samples needs to be specified, when using ValidationScaling'
+                    curvature_scaling = name_to_curvature_scale[curvature_scaling_name](
+                        alphas=alphas,
+                        betas=betas,
+                        temperature_scalings=temperature_scalings,
+                        num_samples=validation_scaling_num_samples,
+                        dataloader=dataloaders[0][1][1]
+                    )
+                else:
+                    curvature_scaling = name_to_curvature_scale[curvature_scaling_name](
+                        confidence=confidence,
+                        fixed=fixed,
+                        shared=shared,
+                    )
+                
+                print("Prior Curvature Scaling")
+                for prior_curvature_scaling in prior_curvature_scalings:
+
+                    name = f'{prefix}BPNN_{curvature_type_name}_' \
+                           f'{criterion_type_name}_{weight_decay}_' \
+                           f'{curvature_scaling_name}'
+                    print(name)
+
+                    base_network = deepcopy(network).to(device)
+
+                    if not pretrained:
+                        loss_function = dataloaders[0][2]
+                        base_network.requires_grad_(True)
+                        fit(base_network, dataloaders[0][1], loss_function, weight_decay,
+                            is_classification=type(loss_function) is nn.CrossEntropyLoss,
+                            learning_rate=learning_rate, num_epochs=num_epochs, patience=patience)
+
+                    if prior_curvature_type is None:
+                        prior_curvature_type = curvature_type
+                    if prior_curvature_scaling is None:
+                        prior_curvature_scaling = curvature_scaling
+
+                    prior_criterion = dataloaders[0][2]
+                    prior_curvature_scaling.reset(dataloader=dataloaders[0][1][1],
+                                                  criterion=prior_criterion,
+                                                  is_classification=type(prior_criterion) == nn.CrossEntropyLoss)
+
+                    prior = init_prior(base_network, prior_curvature_type, dataloaders[0][1][0],
+                                       weight_decay, prior_curvature_scaling, curvature_device,
+                                       curvature_scaling_device, prior_curvature_path,
+                                       negative_data_log_likelihood, len_data)
+
+                    shots = [10, 5, 15, 20, 25]
+                    for shot in shots:
+                        name = name + '_shot' + str(shot)
+                        # load the datasets
+                        for name, dataset_args in FLAGS.config.fewshot.datasets.items():
+                            if dataset_args[0] == FLAGS.datasetname:
+                                # Read data loader in pytorch
+                                trainloader = train_torch_loader(dataset=dataset_args[0], 
+                                                                 train_split=dataset_args[1], 
+                                                                 shot=shot, 
+                                                                 dataload_dir=FLAGS.dataload_dir,
+                                                                 batch_size=FLAGS.num_batch)
+                                
+                                testloader = test_torch_loader(dataset=dataset_args[0], 
+                                                               test_split=dataset_args[2],
+                                                               dataload_dir=FLAGS.dataload_dir,
+                                                               batch_size=FLAGS.num_batch)
+                                
+                                validationloader = validation_torch_loader(dataset=dataset_args[0], 
+                                                                           shot=shot, 
+                                                                           dataload_dir=FLAGS.dataload_dir,
+                                                                           batch_size=FLAGS.num_batch)
+
+                                # Pass down other useful information
+                                num_classes = tfds.builder(dataset_args[0]).info.features["label"].num_classes
+
+                                if dataset_args[0] == 'cifar100':
+                                    # Read data loader in pytorch
+                                    ood_evaluate=True
+                                    ood_testloader = test_torch_loader('cifar10', 'test', FLAGS.dataload_dir)
+                                    ood_dataloaders =  [(10, tuple([ood_testloader, ood_testloader, ood_testloader]), torch.nn.CrossEntropyLoss())]
+
+                        posterior_set = (num_classes, tuple([trainloader, validationloader, testloader]), torch.nn.CrossEntropyLoss())
+                        dataloaders.append(posterior_set)
+
+                        # here we need to loop over the shots.
+                        # define the dataset and put it into dataset loaders.
+                        model = BayesianProgressiveNeuralNetwork(
+                            prior=prior,
+                            backbone=backbone,
+                            last_layer_name=last_layer_name,
+                            lateral_connections=deepcopy(lateral_connections),
+                            weight_decay=weight_decay,
+                            weight_decay_layer_names=[last_layer_name],
+                            curvature_device=curvature_device,
+                            curvature_scaling_device=curvature_scaling_device,
+                        )
+
+                        criterion = criterion_type(model, confidence=confidence)
+
+                        print("run_and_save_params_and_output --- fit_pnn")
+                        result_path = os.path.join(base_path, 'results', name + '.json')
+                        run_and_save_params_and_output(
+                            function=fit_pnn,
+                            path=result_path,
+                            model=model,
+                            dataloaders=dataloaders,
+                            name=get_name(name),
+                            dataset_step=dataset_step_pbnn,
+                            curvature_type=curvature_type,
+                            criterion=criterion,
+                            weight_decay=weight_decay,
+                            curvature_scaling=curvature_scaling,
+                            curvature_num_samples=curvature_num_samples,
+                            learning_rate=learning_rate,
+                            num_epochs=num_epochs,
+                            patience=patience,
+                            compute_pac_bounds=compute_pac_bounds,
+                            confidence=confidence
+                        )
+
+                        save_scaling(model, result_path)
+                        evaluate_fewshot_uncertainty(model=model, test_dataloaders=dataloaders, result_path=result_path)
+                        
+                        # insert all the values properly!
+                        if ood_evaluate:
+                            evaluate_oodfewshot_uncertainty(model, ood_dataloaders, result_path)
+
+                        print("evaluating for each temperature!")
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        
+                        if evaluate_each_temperature:
+                            for temperature_scaling in temperature_scalings:
+                                model.update_scaling(temperature_scaling=temperature_scaling,
+                                                     update_slice=slic #[25, 20, 15, 10, 5]e(None))
+                                name = f'{prefix}PBNN_{curvature_type_name}_' \
+                                    f'{criterion_type_name}_{weight_decay}_' \
+                                    f'{curvature_scaling_name}_{shot}_{temperature_scaling}'
+                                print(name)
+
+                                result_path = os.path.join(base_path, 'results', name + '.json')
+                                d = {}
+                                d['metrics'] = [{'test': evaluate_pnn(model, dataloaders[1:],
+                                                                      range(0, len(dataloaders) - 1),
+                                                                      compute_pac_bounds=compute_pac_bounds,
+                                                                      confidence=confidence)}]
+                                with open(result_path, 'w') as f:
+                                    json.dump(d, f, indent=4, default=str)
+
+                                evaluate_fewshot_uncertainty(model=model, 
+                                                             test_dataloaders=dataloaders,
+                                                             result_path=result_path)
+                                                             
+                                if ood_evaluate:
+                                    evaluate_oodfewshot_uncertainty(model, ood_dataloaders, result_path)
+                        
+                        # reset the dataloaders
+                        dataloaders = [dataloaders[0]]
+
+                        # empty 
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
